@@ -74,11 +74,11 @@ def main():
   df['daily_rides'] = df.rides/DAYS_IN_MONTH
   df['uncompleted'] = df.demand - df.rides
   df['cater_rate'] = df.rides/df2.unique
-  df['booked_riders'] = df1.booked_riders
-  df['completed_riders'] = df1.completed_riders
   df['first_try_cater_rate'] = df14.first_try_cater_rate
   df['retry_initiation_rate'] = df14.retry_initiation_rate
   df['retry_success_rate'] = df14.retry_success_rate
+  df['booked_riders'] = df1.booked_riders
+  df['completed_riders'] = df1.completed_riders
   df['daily_median_eta'] = df3.median_eta
 
 
