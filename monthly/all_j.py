@@ -54,7 +54,7 @@ def main():
 
   sg['rides'] = df1.completed
   sg['daily_rides'] = sg.rides/DAYS_IN_MONTH
-  sg['eta'] = df2.daily_median_eta
+  sg['eta'] = df2.median_eta
   sg['cater_rate'] = sg.rides/df3.unique
   sg['rider_mau'] = df4.active_users
   sg['completed_riders'] = df1.completed_riders
