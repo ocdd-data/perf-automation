@@ -69,7 +69,7 @@ def main():
 
   kh_3w = kh[kh['car_type'] == '3W'].copy()
   kh_4w = kh[kh['car_type'] == '4W'].copy()
-  kh_bike = kh[kh['car_type'] == 'BIKE'].copy()
+  kh_bike = kh[kh['car_type'] == 'Bike'].copy()
 
   vn_car = df2[(df2['region'] == 'VN') & (df2['car_type'] == 'Car')].copy()
   vn_bike = df2[(df2['region'] == 'VN') & (df2['car_type'] == 'Bike')].copy()
