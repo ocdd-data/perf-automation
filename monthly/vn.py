@@ -20,6 +20,7 @@ def main():
   DAYS_IN_MONTH = int(end_date.split("-")[2])
 
   output_date = datetime.strptime(start_date, dt_format).strftime("%b_%Y")
+  region_id = 2 
 
   queries = [[
     Query(4562, params={"date_range": {"start": start_date, "end": end_date}}),
@@ -41,7 +42,8 @@ def main():
     Query(4582, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(4594, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(4598, params={"date_range": {"start": start_date, "end": end_date}}),
-    Query(4750, params={"date_range": {"start": start_date, "end": end_date}})
+    Query(4750, params={"date_range": {"start": start_date, "end": end_date}}),
+    Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id})
   ]]
 
   for query_list in queries:
@@ -69,6 +71,7 @@ def main():
   df14 = redash.get_result(4594) # Monthly Resurrected Riders
   df15 = redash.get_result(4598) # Monthly Resurrected Drivers
   df16 = redash.get_result(4750) # monthly ps - first try
+  df17 = redash.get_result(4814) # median ttm / expire
 
   # Construct monthly DataFrame
   df = pd.DataFrame()
@@ -88,6 +91,8 @@ def main():
   df['retry_initiation_rate'] = df16.retry_initiation_rate
   df['retry_success_rate'] = df16.retry_success_rate
   df['daily_median_eta'] = df3.median_eta
+  df['median_time_to_match_sec'] = df17.median_time_to_match_sec
+  df['median_time_to_expire_sec'] = df17.median_time_to_expire_sec
 
   df['driver_mau'] = bq2.online
   df['completed_driver'] = df1.completed_drivers
