@@ -20,6 +20,7 @@ def main():
   DAYS_IN_MONTH = int(end_date.split("-")[2])
 
   output_date = datetime.strptime(start_date, dt_format).strftime("%b_%Y")
+  region_id = 3
 
   queries = [[
     Query(1625),
@@ -40,7 +41,9 @@ def main():
     Query(2545),
     Query(2549),
     Query(2664),
-    Query(4752, params={"date_range": {"start": start_date, "end": end_date}})
+    Query(4752, params={"date_range": {"start": start_date, "end": end_date}}),
+    Query(4814, params={"Date Range": {"start": start_date, "end": end_date}, "region": region_id}),
+    Query(4411, params={"Date Range": {"start": start_date, "end": end_date}, "region": region_id})
   ]]
 
   for query_list in queries:
@@ -66,6 +69,8 @@ def main():
   df17 = redash.get_result(2549)  # KH - Churned Drivers
   df18 = redash.get_result(2664)  # KH - Monthly Completed Drivers
   df19 = redash.get_result(4752)  # monthly ps - first try
+  df20 = redash.get_result(4814)  # median ttm / expire
+  df21 = redash.get_result(4411)  # avg median eta
 
   # Construct monthly DataFrame
   df = pd.DataFrame()
@@ -79,6 +84,9 @@ def main():
   df['first_try_cater_rate'] = df19.first_try_cater_rate
   df['retry_initiation_rate'] = df19.retry_initiation_rate
   df['retry_success_rate'] = df19.retry_success_rate
+  df['daily_median_eta'] = df21.avg_daily_median_eta
+  df['median_time_to_match_sec'] = df20.median_time_to_match_sec
+  df['median_time_to_expire_sec'] = df20.median_time_to_expire_sec
   df['growth'] = None
 
   df['sh_fin'] = df1.sh_fin
