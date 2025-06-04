@@ -20,6 +20,7 @@ def main():
   DAYS_IN_MONTH = int(end_date.split("-")[2])
 
   output_date = datetime.strptime(start_date, dt_format).strftime("%b_%Y")
+  region_id = 7
 
   queries = [[
     Query(3771, params={"date_range": {"start": start_date, "end": end_date}}),
@@ -39,7 +40,8 @@ def main():
     Query(3787, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(3788, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(3790, params={"date_range": {"start": start_date, "end": end_date}}),
-    Query(4753, params={"date_range": {"start": start_date, "end": end_date}})
+    Query(4753, params={"date_range": {"start": start_date, "end": end_date}}),
+    Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id})
   ]]
 
   for query_list in queries:
@@ -64,6 +66,7 @@ def main():
   df12 = redash.get_result(3788)
   df13 = redash.get_result(3790)
   df14 = redash.get_result(4753)
+  df15 = redash.get_result(4814)
 
   df = pd.DataFrame()
 
@@ -80,6 +83,8 @@ def main():
   df['booked_riders'] = df1.booked_riders
   df['completed_riders'] = df1.completed_riders
   df['daily_median_eta'] = df3.median_eta
+  df['median_time_to_match_sec'] = df15.median_time_to_match_sec
+  df['median_time_to_expire_sec'] = df15.median_time_to_expire_sec
 
 
   df['rides_phv'] = df1.completed_phv
