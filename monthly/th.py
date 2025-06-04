@@ -17,6 +17,8 @@ def main():
   # Get last date of previous month
   dt_format = "%Y-%m-%d"
   date = (datetime.today().replace(day=1) - timedelta(days=1)).strftime(dt_format)
+  start_date = datetime.strptime(date, dt_format).replace(day=1).strftime(dt_format)
+  end_date = date  # already the last day of previous month
 
   DAYS_IN_MONTH = int(date.split("-")[2])
 
@@ -63,6 +65,8 @@ def main():
     Query(3132, params={"region": region, "timezone": timezone, "date": date}),
     Query(3133, params={"region": region, "timezone": timezone, "date": date}),
     Query(4754, params={"date": date})],
+    Query(4814, params={"Date Range": {"start": start_date, "end": end_date}, "region": region_id}),
+    # Query(4411, params={"Date Range": {"start": start_date, "end": end_date}, "region": region_id}),
   ]
 
   for query_list in queries:
@@ -103,6 +107,8 @@ def main():
   df21 = redash.get_result(3132)
   df22 = redash.get_result(3133)
   df23 = redash.get_result(4754)
+  df24 = redash.get_result(4814)
+  # df25 = redash.get_result(4411)
 
   df = pd.DataFrame()
 
@@ -114,6 +120,9 @@ def main():
   df['retry_initiation_rate'] = df23.retry_initiation_rate
   df['retry_success_rate'] = df23.retry_success_rate
   df['daily_rides'] = df.rides/DAYS_IN_MONTH
+  # df['daily_median_eta'] = df25.avg_daily_median_eta
+  df['median_time_to_match_sec'] = df22.median_time_to_match_sec
+  df['median_time_to_expire_sec'] = df22.median_time_to_expire_sec
   df['uncompleted'] = df.demand - df.rides
 
   df['phv_rides'] = df2.phv_trip_count
