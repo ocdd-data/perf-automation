@@ -66,7 +66,7 @@ def main():
     Query(3133, params={"region": region, "timezone": timezone, "date": date}),
     Query(4754, params={"date": date})],
     Query(4814, params={"Date Range": {"start": start_date, "end": end_date}, "region": region_id}),
-    # Query(4411, params={"Date Range": {"start": start_date, "end": end_date}, "region": region_id}),
+    Query(4411, params={"Date Range": {"start": start_date, "end": end_date}, "region": region_id})
   ]
 
   for query_list in queries:
@@ -108,7 +108,7 @@ def main():
   df22 = redash.get_result(3133)
   df23 = redash.get_result(4754)
   df24 = redash.get_result(4814)
-  # df25 = redash.get_result(4411)
+  df25 = redash.get_result(4411)
 
   df = pd.DataFrame()
 
@@ -120,7 +120,7 @@ def main():
   df['retry_initiation_rate'] = df23.retry_initiation_rate
   df['retry_success_rate'] = df23.retry_success_rate
   df['daily_rides'] = df.rides/DAYS_IN_MONTH
-  # df['daily_median_eta'] = df25.avg_daily_median_eta
+  df['daily_median_eta'] = df25.avg_daily_median_eta
   df['median_time_to_match_sec'] = df22.median_time_to_match_sec
   df['median_time_to_expire_sec'] = df22.median_time_to_expire_sec
   df['uncompleted'] = df.demand - df.rides
