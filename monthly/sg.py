@@ -61,6 +61,7 @@ def main():
     Query(4691, params={"date": query_date}),
     Query(4724, params={"date": query_date}),
     Query(4727, params={"date": query_date}),
+    Query(4814, params={"Date Range": {"start": start_date, "end": end_date}, "region": region_id}),  
   ]]
 
   for query_list in queries:
@@ -93,6 +94,7 @@ def main():
   df19 = redash.get_result(4691) # monthly ps - first try
   df20 = redash.get_result(4724) # rider act, resurrect, churn
   df21 = redash.get_result(4727) # rider act, resurrect, churn
+  df22 = redash.get_result(4814) # median time to match, expire
 
 
   df = pd.DataFrame()
@@ -110,6 +112,8 @@ def main():
   df['retry_initiation_rate'] = df19.retry_initiation_rate
   df['retry_success_rate'] = df19.retry_success_rate
   df['daily_median_eta'] = df8.median_eta
+  df['median_time_to_match_sec'] = df22.median_time_to_match_sec
+  df['median_time_to_expire_sec'] = df22.median_time_to_expire_sec
 
   df['rides_phv'] = df2.phv_trip_count
   df['demand_phv'] = df2.phv_trip_booking
