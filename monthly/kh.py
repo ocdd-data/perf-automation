@@ -43,7 +43,8 @@ def main():
     Query(2664),
     Query(4752, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(4814, params={"Date Range": {"start": start_date, "end": end_date}, "region": region_id}),
-    Query(4411, params={"Date Range": {"start": start_date, "end": end_date}, "region": region_id})
+    Query(4411, params={"Date Range": {"start": start_date, "end": end_date}, "region": region_id}),
+    Query(4819, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id})
   ]]
 
   for query_list in queries:
@@ -71,6 +72,7 @@ def main():
   df19 = redash.get_result(4752)  # monthly ps - first try
   df20 = redash.get_result(4814)  # median ttm / expire
   df21 = redash.get_result(4411)  # avg median eta
+  df22 = redash.get_result(4819) # new book search logic
 
   # Construct monthly DataFrame
   df = pd.DataFrame()
@@ -237,11 +239,11 @@ def main():
   df = df.copy()
 
   df['dau'] = df8.avg_user_open
-  df['daily_user_search'] = df8.avg_user_search
+  df['daily_user_search'] = df22.rider_unique_search_daily_avg
 
-  df['rider_booking_daily'] = df9.daily_avg_all_rider_count
+  df['rider_booking_daily'] = df22.rider_unique_book_daily_avg
   df['rider_booking_dest_daily'] = df9.daily_avg_all_destination_rider_count
-  df['book_search_ratio'] = df.rider_booking_dest_daily/df.daily_user_search
+  df['book_search_ratio'] = df22.book_search_ratio_daily
   df['book_open_ratio'] = None
 
   df['rider_fin_daily'] = df9.daily_avg_finished_rider_count
