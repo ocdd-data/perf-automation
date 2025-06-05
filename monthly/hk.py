@@ -41,7 +41,8 @@ def main():
     Query(3788, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(3790, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(4753, params={"date_range": {"start": start_date, "end": end_date}}),
-    Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id})
+    Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id}), 
+    Query(4819, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id})
   ]]
 
   for query_list in queries:
@@ -67,6 +68,7 @@ def main():
   df13 = redash.get_result(3790)
   df14 = redash.get_result(4753)
   df15 = redash.get_result(4814)
+  df16 = redash.get_result(4819)
 
   df = pd.DataFrame()
 
@@ -222,14 +224,14 @@ def main():
   df['rider_ft_same_month'] = df11.same_month
   df['rider_same_month_activation'] = df.rider_ft_same_month/df.rider_signup
   df['rider_unique_open_monthly'] = bq1.active_users
-  df['rider_unique_search_monthly'] = bq1.search_monthly
-  df['rider_unique_book_monthly'] = df12.book_monthly
+  df['rider_unique_search_monthly'] = df16.unique_search_users
+  df['rider_unique_book_monthly'] = df16.unique_order_users
   df['rider_unique_complete_monthly'] = df12.completed_monthly
   df['rider_unique_open_daily'] = bq1.open_daily
-  df['rider_unique_search_daily'] = bq1.search_daily
-  df['rider_unique_book_daily'] = df12.book_daily
+  df['rider_unique_search_daily'] = df16.rider_unique_search_daily_avg
+  df['rider_unique_book_daily'] = df16.rider_unique_book_daily_avg
   df['rider_unique_complete_daily'] = df12.completed_daily
-  df['book_search_ratio_daily'] = df.rider_unique_book_daily/df.rider_unique_search_daily
+  df['book_search_ratio_daily'] = df16.book_search_ratio_daily
   df['booking_per_user'] = df.demand/df.rider_unique_book_monthly
   df['complete_per_user'] = df.rides/df.rider_unique_complete_monthly
   df['duplicate_ratio'] = df.demand/df2.unique
