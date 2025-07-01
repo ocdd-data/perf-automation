@@ -266,7 +266,7 @@ def main():
   df['bike_cancellation_rate'] = df1.bike_cancel/df1.bike_demand*100
 
   df['_4w_mau'] = bq9.online_4w_count
-  df['completed_4w'] = df1.phv_completed
+  df['completed_4w'] = df1._4w_completed
   df['_4w_online_daily'] = bq9.online_4w_daily
   df['pinged_4w_daily'] = bq10.pinged_4w_daily
   df['completed_4w_daily'] = df19.completed_4w_daily
