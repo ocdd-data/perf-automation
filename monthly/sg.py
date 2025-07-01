@@ -1,12 +1,11 @@
-import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import pandas as pd
 import calendar
+import os
 from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
+
+import pandas as pd
 from dotenv import load_dotenv
-from utils.helpers import Redash, Query
+
+from utils.helpers import Query, Redash
 from utils.slack import SlackBot
 
 
@@ -36,10 +35,7 @@ def main():
   output_date = datetime(YEAR, MONTH, 1).strftime("%b_%Y")
 
   region = 'SG'
-  
-  timezone = TIMEZONES[region]
-  region_str = REGIONS[region]
-  region_id = IDS[region]
+  region_id = 1
 
   queries = [[
     Query(2183, params={"date": query_date}),
@@ -67,7 +63,7 @@ def main():
     Query(4691, params={"date": query_date}),
     Query(4724, params={"date": query_date}),
     Query(4727, params={"date": query_date}),
-    Query(4814, params={"Date Range": {"start": start_date, "end": end_date}, "region": region}), 
+    Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id}), 
     Query(4819, params={"date_range": {"start": start_date, "end": end_date}, "region": region})
   ]]
 

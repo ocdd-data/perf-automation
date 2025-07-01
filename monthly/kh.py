@@ -43,8 +43,8 @@ def main():
     Query(2549),
     Query(2664),
     Query(4752, params={"date_range": {"start": start_date, "end": end_date}}),
-    Query(4814, params={"Date Range": {"start": start_date, "end": end_date}, "region": region}),
-    Query(4411, params={"Date Range": {"start": start_date, "end": end_date}, "region": region}),
+    Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id}),
+    Query(4411, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id}),
     Query(4819, params={"date_range": {"start": start_date, "end": end_date}, "region": region})
   ]]
 

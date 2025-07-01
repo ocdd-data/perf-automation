@@ -17,8 +17,6 @@ def main():
   start_date = (datetime.today().replace(day=1) - timedelta(days=1)).replace(day=1).strftime(dt_format)
   end_date = (datetime.today().replace(day=1) - timedelta(days=1)).strftime(dt_format)
 
-  date_range_string = f'{{"start": "{start_date}", "end": "{end_date}"}}'
-
   DAYS_IN_MONTH = int(end_date.split("-")[2])
 
   output_date = datetime.strptime(start_date, dt_format).strftime("%b_%Y")
@@ -44,8 +42,8 @@ def main():
     Query(3788, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(3790, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(4753, params={"date_range": {"start": start_date, "end": end_date}}),
-    Query(4814, params={"date_range": {"start": start_date, "end": end_date}}, "region": region_id}),
-    Query(4819, params={"date_range": {"start": start_date, "end": end_date}}, "region": region}),
+    Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id}),
+    Query(4819, params={"date_range": {"start": start_date, "end": end_date}, "region": region}),
   ]]
 
   for query_list in queries:

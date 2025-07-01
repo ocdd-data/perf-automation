@@ -30,13 +30,13 @@ def main():
   region_str = REGIONS[region]
   region_id = IDS[region]
 
-  queries = [
-    [Query(2667, params={"region": region_str, "timezone": timezone, "date": date}), 
+  queries = [[
+    Query(2667, params={"region": region_str, "timezone": timezone, "date": date}), 
     Query(2668, params={"region": region_str, "timezone": timezone, "date": date}), 
     Query(2669, params={"region": region_id, "timezone": timezone, "date": date}),
     Query(2670, params={"region": region_id, "timezone": timezone, "date": date}),
     Query(2671, params={"region": region_id, "timezone": timezone, "date": date}),
-    Query(3106, params={"region": region, "timezone": timezone, "date": date}),
+    Query(3106, params={"date": date}),
     Query(3107, params={"region": region, "timezone": timezone, "date": date}),
     Query(3108, params={"region": region, "timezone": timezone, "date": date}),
     Query(3109, params={"region": region, "timezone": timezone, "date": date}),
@@ -64,11 +64,11 @@ def main():
     Query(3131, params={"region": region_id, "timezone": timezone, "date": date}),
     Query(3132, params={"region": region, "timezone": timezone, "date": date}),
     Query(3133, params={"region": region, "timezone": timezone, "date": date}),
-    Query(4754, params={"date": date})],
-    Query(4814, params={"Date Range": {"start": start_date, "end": end_date}, "region": region}),
-    Query(4411, params={"Date Range": {"start": start_date, "end": end_date}, "region": region}),
+    Query(4754, params={"date": date}),
+    Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id}),
+    Query(4411, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id}),
     Query(4819, params={"date_range": {"start": start_date, "end": end_date}, "region": region})
-  ]
+  ]]
 
   for query_list in queries:
     redash.run_queries(query_list)
@@ -123,8 +123,8 @@ def main():
   df['retry_success_rate'] = df23.retry_success_rate
   df['daily_rides'] = df.rides/DAYS_IN_MONTH
   df['daily_median_eta'] = df25.avg_daily_median_eta
-  df['median_time_to_match_sec'] = df22.median_time_to_match_sec
-  df['median_time_to_expire_sec'] = df22.median_time_to_expire_sec
+  df['median_time_to_match_sec'] = df24.median_time_to_match_sec
+  df['median_time_to_expire_sec'] = df24.median_time_to_expire_sec
   df['uncompleted'] = df.demand - df.rides
 
   df['phv_rides'] = df2.phv_trip_count
@@ -236,7 +236,7 @@ def main():
   df = df.copy()
 
   df['bike_mau'] = bq6.online_bike_count
-  df['completed_bike'] = df1.completed_bikes
+  df['completed_bike'] = df1.bike_completed
   df['bike_online_daily'] = bq6.online_bike_daily
   df['pinged_bike_daily'] = bq7.pinged_bike_daily
   df['completed_bike_daily'] = df17.completed_bike_daily
@@ -266,7 +266,7 @@ def main():
   df['bike_cancellation_rate'] = df1.bike_cancel/df1.bike_demand*100
 
   df['_4w_mau'] = bq9.online_4w_count
-  df['completed_4w'] = df1.completed_4w
+  df['completed_4w'] = df1.phv_completed
   df['_4w_online_daily'] = bq9.online_4w_daily
   df['pinged_4w_daily'] = bq10.pinged_4w_daily
   df['completed_4w_daily'] = df19.completed_4w_daily
