@@ -175,7 +175,7 @@ def main():
 
   th_queries = [[
     Query(2667, params={"region": region_str, "timezone": timezone, "date": start_date}),
-    Query(3106, params={"region": region, "timezone": timezone, "date": start_date}),
+    Query(3106, params={"date": start_date}),
     Query(3113, params={"region": region, "timezone": timezone, "date": start_date}),
     Query(3119, params={"region": region, "timezone": timezone, "date": start_date}),
     Query(3120, params={"region": region, "timezone": timezone, "date": start_date}),
