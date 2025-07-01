@@ -35,6 +35,12 @@ def main():
   DAYS_IN_MONTH = last_day
   output_date = datetime(YEAR, MONTH, 1).strftime("%b_%Y")
 
+  region = 'SG'
+  
+  timezone = TIMEZONES[region]
+  region_str = REGIONS[region]
+  region_id = IDS[region]
+
   queries = [[
     Query(2183, params={"date": query_date}),
     Query(2184, params={"date": query_date}),
