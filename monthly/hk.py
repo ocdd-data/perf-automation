@@ -23,6 +23,14 @@ def main():
   region_id = 7
   region = "HK"
 
+  import json
+  def redash_date_range(start_date, end_date):
+      return json.dumps({
+          "start": start_date,
+          "end": end_date
+      })
+
+
   queries = [[
     Query(3771, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(3772, params={"date_range": {"start": start_date, "end": end_date}}),
