@@ -22,7 +22,6 @@ def main():
   output_date = datetime.strptime(start_date, dt_format).strftime("%b_%Y")
   region_id = 7
   region = "HK"
-  region_id = IDS[region]
 
   queries = [[
     Query(3771, params={"date_range": {"start": start_date, "end": end_date}}),
