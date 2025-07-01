@@ -21,6 +21,7 @@ def main():
 
   output_date = datetime.strptime(start_date, dt_format).strftime("%b_%Y")
   region_id = 7
+  region = HK
 
   queries = [[
     Query(3771, params={"date_range": {"start": start_date, "end": end_date}}),
@@ -41,8 +42,8 @@ def main():
     Query(3788, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(3790, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(4753, params={"date_range": {"start": start_date, "end": end_date}}),
-    Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id}), 
-    Query(4819, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id})
+    Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region}), 
+    Query(4819, params={"date_range": {"start": start_date, "end": end_date}, "region": region})
   ]]
 
   for query_list in queries:
