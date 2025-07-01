@@ -17,19 +17,13 @@ def main():
   start_date = (datetime.today().replace(day=1) - timedelta(days=1)).replace(day=1).strftime(dt_format)
   end_date = (datetime.today().replace(day=1) - timedelta(days=1)).strftime(dt_format)
 
+  date_range_string = f'{{"start": "{start_date}", "end": "{end_date}"}}'
+
   DAYS_IN_MONTH = int(end_date.split("-")[2])
 
   output_date = datetime.strptime(start_date, dt_format).strftime("%b_%Y")
   region_id = 7
   region = "HK"
-
-  import json
-  def redash_date_range(start_date, end_date):
-      return json.dumps({
-          "start": start_date,
-          "end": end_date
-      })
-
 
   queries = [[
     Query(3771, params={"date_range": {"start": start_date, "end": end_date}}),
@@ -50,8 +44,9 @@ def main():
     Query(3788, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(3790, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(4753, params={"date_range": {"start": start_date, "end": end_date}}),
-    Query(4814, params={"date_range": redash_date_range(start_date, end_date), "region": region_id}),
-    Query(4819, params={"date_range": redash_date_range(start_date, end_date),"region": region})
+    Query(4814, params={"date_range": date_range_string, "region": region_id}),
+    Query(4819, params={"date_range": date_range_string, "region": region}),
+}
   ]]
 
   for query_list in queries:
