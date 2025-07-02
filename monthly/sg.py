@@ -64,7 +64,8 @@ def main():
     Query(4724, params={"date": query_date}),
     Query(4727, params={"date": query_date}),
     Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id}), 
-    Query(4819, params={"date_range": {"start": start_date, "end": end_date}, "region": region})
+    Query(4819, params={"date_range": {"start": start_date, "end": end_date}, "region": region}),
+    Query(5000, params={"date_range": {"start": start_date, "end": end_date})
   ]]
 
   for query_list in queries:
@@ -99,6 +100,7 @@ def main():
   df21 = redash.get_result(4727) # rider act, resurrect, churn
   df22 = redash.get_result(4814) # median time to match, expire
   df23 = redash.get_result(4819) # new book search logic
+  df24 = redash.get_result(5000) # driver approved
 
   df = pd.DataFrame()
 
@@ -134,7 +136,7 @@ def main():
 
   df['driver_mau'] = bq3.online_driver_count
   df['completed_driver'] = df1.completed_drivers
-  df['total_approved'] = None
+  df['total_approved'] = df24.total_approved
   df['driver_online_daily'] = bq3.online_driver_daily
   df['pinged_drivers_daily'] = bq4['pinged_drivers_daily'].iloc[0]
   df['completed_driver_daily'] = df14.completed_driver_daily
