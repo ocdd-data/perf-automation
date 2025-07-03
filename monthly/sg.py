@@ -65,7 +65,7 @@ def main():
     Query(4727, params={"date": query_date}),
     Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id}), 
     Query(4819, params={"date_range": {"start": start_date, "end": end_date}, "region": region}),
-    Query(5000, params={"date_range": {"start": start_date, "end": end_date})
+    Query(5000, params={"date_range": {"start": start_date, "end": end_date}})
   ]]
 
   for query_list in queries:
