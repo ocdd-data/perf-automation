@@ -236,7 +236,7 @@ def main():
   df = df.copy()
 
   df['bike_mau'] = bq6.online_bike_count
-  df['completed_bike'] = df1.bike_completed
+  df['completed_bike_drivers'] = df1.bike_completed_drivers
   df['bike_online_daily'] = bq6.online_bike_daily
   df['pinged_bike_daily'] = bq7.pinged_bike_daily
   df['completed_bike_daily'] = df17.completed_bike_daily
@@ -266,7 +266,7 @@ def main():
   df['bike_cancellation_rate'] = df1.bike_cancel/df1.bike_demand*100
 
   df['_4w_mau'] = bq9.online_4w_count
-  df['completed_4w'] = df1._4w_completed
+  df['completed_4w_drivers'] = df1._4w_completed_drivers
   df['_4w_online_daily'] = bq9.online_4w_daily
   df['pinged_4w_daily'] = bq10.pinged_4w_daily
   df['completed_4w_daily'] = df19.completed_4w_daily
