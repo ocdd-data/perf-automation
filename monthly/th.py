@@ -176,7 +176,7 @@ def main():
 
   df['driver_mau'] = bq3.online_driver_count
   df['completed_driver'] = df1.completed_drivers
-  df['total_approved_drivers'] = None
+  df['total_approved_drivers'] = df3.total_approved
   df['driver_online_daily'] = bq3.online_driver_daily
   df['pinged_drivers_daily'] = bq4.pinged_drivers_daily
   df['completed_driver_daily'] = df10.completed_driver_daily
