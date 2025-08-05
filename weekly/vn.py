@@ -29,6 +29,7 @@ def main():
     Query(4615, params={"week_start_date": start_date}),
     Query(4616, params={"week_start_date": start_date}),
     Query(4617, params={"week_start_date": start_date}),
+    Query(5212, params={"week_start_date": start_date}),
   ]]
 
   for query_list in queries:
@@ -43,6 +44,7 @@ def main():
   df6 = redash.get_result(4615) # VN - Average Fare
   df7 = redash.get_result(4616) # VN - Promotion Spending Weekly
   df8 = redash.get_result(4617) # VN - Platform Fees Weekly
+  df9 = redash.get_result(5212) # VN - Payment Method Weekly
 
   # Construct weekly dataFrame
   df = pd.DataFrame()
@@ -156,9 +158,36 @@ def main():
   df = df.T
   df.columns = [f"{output_date}"]
 
-  output_file = f"VN_Weekly_{output_date}.csv"
-
-  df.to_csv(output_file)
+  output_file = f"VN_Weekly_{output_date}.xlsx"
+  
+  pm = pd.DataFrame()
+  
+  pm['total_cash_trips'] = df9.cash_trips
+  pm['total_cash_gmv'] = df9.cash_gmv
+  pm['total_momo_trips'] = df9.momo_trips
+  pm['total_momo_gmv'] = df9.momo_gmv
+  pm['total_card_trips'] = df9.card_trips
+  pm['total_card_gmv'] = df9.card_gmv
+  pm['bike_cash_trips'] = df9.bike_cash_trips
+  pm['bike_cash_gmv'] = df9.bike_cash_gmv
+  pm['bike_momo_trips'] = df9.bike_momo_trips
+  pm['bike_momo_gmv'] = df9.bike_momo_gmv
+  pm['bike_card_trips'] = df9.bike_card_trips
+  pm['bike_card_gmv'] = df9.bike_card_gmv
+  pm['car_cash_trips'] = df9.car_cash_trips
+  pm['car_cash_gmv'] = df9.car_cash_gmv
+  pm['car_momo_trips'] = df9.car_momo_trips
+  pm['car_momo_gmv'] = df9.car_momo_gmv
+  pm['car_card_trips'] = df9.car_card_trips
+  pm['car_card_gmv'] = df9.car_card_gmv
+  
+  pm = pm.T
+  pm.columns = [f"{output_date}"]
+  pm.fillna(0, inplace=True)
+  
+  with pd.ExcelWriter(output_file, engine="xlsxwriter") as writer:
+    df.to_excel(writer, sheet_name="Weekly Report", index=False)
+    pm.to_excel(writer, sheet_name="Payment Method", index=False)
 
   slack = SlackBot()
   slack.uploadFile(output_file, 

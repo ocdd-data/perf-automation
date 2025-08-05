@@ -173,7 +173,7 @@ def main():
   df['driver_resurrected_rate'] = None
   df['driver_churned'] = df21.churned
   df['driver_churned_rate'] = None
-  df['driver_inflow'] =  df21.resurrected + df['driver_ft_all_time']
+  df['driver_inflow'] = df21.activated + df21.resurrected - df21.churned
 
   df = df.copy()
 
