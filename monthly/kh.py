@@ -31,7 +31,7 @@ def main():
     Query(2376),
     Query(2377),
     Query(2383),
-    Query(2384),
+    Query(5349),
     Query(2385),
     Query(2386),
     Query(2387),
@@ -59,7 +59,7 @@ def main():
   df5 = redash.get_result(2376)  # KH - Signed Up Drivers/Riders
   df6 = redash.get_result(2377)  # KH - First Trip Riders
   df7 = redash.get_result(2383)  # KH - Daily First Trip Drivers/Riders
-  df8 = redash.get_result(2384)  # KH - Active Rider Activity
+  df8 = redash.get_result(5349)  # KH - Active Rider Activity
   df9 = redash.get_result(2385)  # KH - Monthly and Daily Users
   df10 = redash.get_result(2386)  # KH - ETA
   df11 = redash.get_result(2387)  # KH - Driver Utilization

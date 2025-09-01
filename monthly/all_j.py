@@ -77,7 +77,7 @@ def main():
     Query(1625),
     Query(2377),
     Query(2383),
-    Query(2384),
+    Query(5349),
     Query(2385),
     Query(2386),
     Query(2545),
@@ -95,7 +95,7 @@ def main():
   df1 = redash.get_result(1625)   # KH - All trips
   df2 = redash.get_result(2386)   # KH - ETA
   df3 = redash.get_result(2385)   # KH - Monthly and Daily Users
-  df4 = redash.get_result(2384)   # KH - Active Rider Activity
+  df4 = redash.get_result(5349)   # KH - Active Rider Activity
   df5 = redash.get_result(2377)   # KH - First Trip Riders
   df6 = redash.get_result(2550)   # KH - Monthly Resurrected Riders
   df7 = redash.get_result(2545)   # KH - Churned Riders
