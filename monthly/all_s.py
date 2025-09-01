@@ -80,6 +80,7 @@ def main():
   df5['sign_up'] = pd.to_datetime(df5['sign_up'])
   df5_trimmed = df5[['sign_up', 'e_tt']]
   t1 = df4.merge(df5_trimmed, left_on='trip_month', right_on='sign_up', how='left')
+  t1['trip_month'] = t1['trip_month'].dt.strftime('%Y-%m-%d')
   t1 = t1.drop(columns=['sign_up'])
 
   # Save to Excel
