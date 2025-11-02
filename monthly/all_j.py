@@ -110,12 +110,12 @@ def main():
   kh['daily_rides'] = kh.rides/DAYS_IN_MONTH
   kh['eta'] = df2.eta_fin
   kh['cater_rate'] = df3.cater_rate
-  kh['rider_mau'] = df4.MAU
+  kh['rider_mau'] = df4.active_users
   kh['completed_riders'] = df3.finished_rider_count
-  kh['rider_activated'] = df5.ft
+  kh['rider_activated'] = df5.all_time
   kh['rider_resurrected'] = df6.resurrect_all
   kh['rider_churned'] = df7.churned
-  kh['rider_inflow'] = df5.ft + df6.resurrect_all - df7.churned
+  kh['rider_inflow'] = df5.all_time + df6.resurrect_all - df7.churned
 
   kh['completed_driver'] = df8.finished_drivers
   kh['driver_activated'] = df9.all_first_drivers
