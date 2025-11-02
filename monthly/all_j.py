@@ -73,19 +73,21 @@ def main():
   sg.columns = [f"{output_date}"]
 
   # KH
+
   kh_queries = [[
-    Query(1625),
-    Query(2377),
-    Query(2383),
-    Query(5349),
-    Query(2385),
-    Query(2386),
-    Query(2545),
-    Query(2547),
-    Query(2549),
-    Query(2550),
-    Query(2664),
+      Query(1625, params={"date": start_date}),
+      Query(2377, params={"date": start_date}),
+      Query(2383, params={"date": start_date}),
+      Query(5349, params={"date": start_date}),
+      Query(2385, params={"date": start_date}),
+      Query(2386, params={"date": start_date}),
+      Query(2545, params={"date_range": {"start": start_date, "end": end_date}}),
+      Query(2547, params={"date": start_date}),
+      Query(2549, params={"date": start_date}),
+      Query(2550, params={"date": start_date}),
+      Query(2664, params={"date": start_date}),
   ]]
+
 
   for query_list in kh_queries:
     redash.run_queries(query_list)
