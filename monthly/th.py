@@ -200,10 +200,8 @@ def main():
   df['driver_average_utilisation_hours'] = df13.avg_utilisation_hours
   df['ping_per_driver_daily'] = bq4.ping_per_driver_daily
   df['driver_waiting_before_cancel'] = df9.avg_waiting_time_driver_cxl
-  df['driver_cancellation_rate'] = df1.driver_cancel/df.demand*100
-  df['drivers_ft_unique'] = df.driver_ft_all_time/df.completed_driver
-  df['drivers_repeated'] = df16.repeated
-  # df['driver_activated'] = df16.activated
+  df['driver_cancellation_rate'] = df1.driver_cancel/df.matched*100
+  df['drivers_ft_unique'] = df.driver_ft_all_time/df.completed_driverz
   df['driver_resurrected'] = df16.resurrected
   df['driver_resurrected_%'] = None
   df['driver_churned'] = df16.churned
@@ -242,7 +240,7 @@ def main():
   df['ping_per_4w_daily'] = bq10.ping_per_4w_daily
 
   df['_4w_waiting_before_cancel'] = df9.avg_waiting_time_4w_cxl
-  df['_4w_cancellation_rate'] = df1._4w_cancel / df1._4w_demand * 100
+  df['_4w_cancellation_rate'] = df1._4w_cancel / df1._4w_matched * 100
 
   df['_4w_ft_unique'] = df._4w_ft_all_time / df.completed_4w
   df['_4w_repeated'] = df16.repeated_4w
@@ -283,7 +281,7 @@ def main():
   df['ping_per_bike_daily'] = bq7.ping_per_bike_daily
 
   df['bike_waiting_before_cancel'] = df9.avg_waiting_time_bike_cxl
-  df['bike_cancellation_rate'] = (df1.bike_cancel / df1.bike_demand) * 100
+  df['bike_cancellation_rate'] = (df1.bike_cancel / df1.bike_matched) * 100
 
   df['bike_ft_unique'] = df.bike_ft_all_time / df.completed_bike
   df['bike_repeated'] = df16.repeated_bike
