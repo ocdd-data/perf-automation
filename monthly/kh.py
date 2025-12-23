@@ -245,7 +245,7 @@ def main():
   df['driver_average_utilisation_hours'] = df11.monthly_daily_avg_hour
   df['ping_per_driver_daily'] = df12.avg_ping_per_driver
   df['driver_waiting_before_cancel'] = df24.avg_waiting_time_driver_cxl
-  df['driver_cancellation_rate'] = df1.driver_cancel/df.all_*100
+  df['driver_cancellation_rate'] = df1.driver_cancel/df.matched*100
   df['drivers_ft_unique'] = df.driver_ft_all_time/df.completed_driver
   df['drivers_repeated'] = df17.repeated
   df['resurrect_2_month_driver'] = df15.resurrect_2_month
