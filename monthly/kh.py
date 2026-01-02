@@ -135,7 +135,6 @@ def main():
   df['daily_median_eta'] = df21.avg_daily_median_eta
   df['median_time_to_match_sec'] = df20.median_time_to_match_sec
   df['median_time_to_expire_sec'] = df20.median_time_to_expire_sec
-  df['growth'] = None
 
   # sh/concierge - not looking at it anym
 
