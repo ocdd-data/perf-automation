@@ -128,12 +128,12 @@ def main():
 
   # VN
   vn_queries = [[
-    Query(4562, params={"date_range": {"start": start_date, "end": end_date}}),
-    Query(4563, params={"date_range": {"start": start_date, "end": end_date}}),
-    Query(4565, params={"date_range": {"start": start_date, "end": end_date}}),
-    Query(4566, params={"date_range": {"start": start_date, "end": end_date}}),
-    Query(4578, params={"date_range": {"start": start_date, "end": end_date}}),
-    Query(4582, params={"date_range": {"start": start_date, "end": end_date}}),
+    Query(4562, params={"date_range": {"start": start_date, "end": end_date}, "city": "ALL"}),
+    Query(4563, params={"date_range": {"start": start_date, "end": end_date}, "city": "ALL"}),
+    Query(4565, params={"date_range": {"start": start_date, "end": end_date}, "city": "ALL"}),
+    Query(4566, params={"date_range": {"start": start_date, "end": end_date}, "city": "ALL"}),
+    Query(4578, params={"date_range": {"start": start_date, "end": end_date}, "city": "ALL"}),
+    Query(4582, params={"date_range": {"start": start_date, "end": end_date}, "city": "ALL"}),
   ]]
 
   for query_list in vn_queries:
@@ -147,7 +147,6 @@ def main():
   df4 = redash.get_result(4565)   # VN - Rider Active Users
   df5 = redash.get_result(4582)   # VN - Riders CAR
   df6 = redash.get_result(4578)   # VN - Drivers CAR
-
 
   vn['rides'] = df1.completed
   vn['daily_rides'] = vn.rides/DAYS_IN_MONTH
