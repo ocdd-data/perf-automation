@@ -1,0 +1,35 @@
+name: KPI Monthly Run
+
+on:
+  schedule:
+    - cron: '0 1 1 * *'  # 1st day of every month at 01:00 UTC (9am SGT)
+  workflow_dispatch:
+
+jobs:
+  run-kpi-tracking:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set up environment variables
+        run: |
+          echo "REDASH_API_KEY=${{ secrets.REDASH_API_KEY }}" >> .env
+          echo "REDASH_BASE_URL=${{ secrets.REDASH_BASE_URL }}" >> .env
+          echo "SLACK_TOKEN=${{ secrets.SLACK_TOKEN }}" >> .env
+          echo "SLACK_CHANNEL=${{ secrets.SLACK_CHANNEL }}" >> .env
+
+      - name: Run KPI Tracking Script
+        run: |
+          python "kpi tracking/kpi.py"
