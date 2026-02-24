@@ -5,6 +5,9 @@ Sheets: SG, HK, TH, VN-HCMC, VN-Hanoi, KH-PNH, KH-OTHERS
 
 import os
 from datetime import datetime, timedelta
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import pandas as pd
 from dotenv import load_dotenv
