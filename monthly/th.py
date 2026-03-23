@@ -255,7 +255,7 @@ def main():
 
   # ------------- BIKE METRICS -------------
   df['bike_mau'] = bq6.online_bike_count
-  df['completed_bike'] = df1.bike_completed_riders
+  df['completed_bike'] = df1.bike_completed_drivers
   df['bike_approved'] = df11.bike_approved
 
   df['bike_online_daily'] = bq6.online_bike_daily
