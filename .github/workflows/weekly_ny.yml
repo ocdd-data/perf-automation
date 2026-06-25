@@ -1,0 +1,37 @@
+# NY weekly report — runs the prior complete Mon–Sun week and posts to Slack.
+name: NY Weekly Run
+
+on:
+  schedule:
+    # Monday 12:00 UTC (~07:00–08:00 America/New_York). The NY week ends Sun 23:59 ET
+    # (~Mon 04:00–05:00 UTC), so this is safely after the week has closed.
+    - cron: '00 12 * * 1'
+  workflow_dispatch:        # lets you trigger a run manually from the Actions tab
+
+jobs:
+  run-python-script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo content
+        uses: actions/checkout@v4
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create .env file
+        run: |
+          echo "REDASH_BASE_URL=${{ secrets.REDASH_BASE_URL }}" >> .env
+          echo "REDASH_API_KEY=${{ secrets.REDASH_API_KEY }}" >> .env
+          echo "SLACK_TOKEN=${{ secrets.SLACK_TOKEN }}" >> .env
+          echo "SLACK_CHANNEL=${{ secrets.SLACK_CHANNEL }}" >> .env
+          echo "SLACK_CHANNEL_NY=${{ secrets.SLACK_CHANNEL_NY }}" >> .env
+
+      - name: install python packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: execute py script
+        run: python -m weekly.ny
