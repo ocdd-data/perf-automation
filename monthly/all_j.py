@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 from dotenv import load_dotenv
 
-from utils.constants import IDS, REGIONS, TIMEZONES
+from utils.constants import REGIONS, TIMEZONES
 from utils.helpers import Query, Redash
 from utils.slack import SlackBot
 
@@ -12,7 +12,10 @@ from utils.slack import SlackBot
 def main():
   load_dotenv()
 
-  redash = Redash(key=os.getenv("REDASH_API_KEY"), base_url=os.getenv("REDASH_BASE_URL"))
+  redash = Redash(
+    key=os.getenv("REDASH_API_KEY"),
+    base_url=os.getenv("REDASH_BASE_URL")
+  )
 
   dt_format = "%Y-%m-%d"
   start_date = (datetime.today().replace(day=1) - timedelta(days=1)).replace(day=1).strftime(dt_format)
@@ -52,42 +55,40 @@ def main():
   df9 = redash.get_result(2353)   # SG - Drivers Resurrected
   df10 = redash.get_result(2354)  # SG - Drivers Churned
 
-  sg['rides'] = df1.completed
-  sg['daily_rides'] = sg.rides/DAYS_IN_MONTH
-  sg['eta'] = df2.median_eta
-  sg['cater_rate'] = sg.rides/df3.unique
-  sg['rider_mau'] = df4.active_users
-  sg['completed_riders'] = df1.completed_riders
-  sg['rider_activated'] = df5.all_time
-  sg['rider_resurrected'] = df6.resurrect_all
-  sg['rider_churned'] = df7.churned
-  sg['rider_inflow'] = df5.all_time + df6.resurrect_all - df7.churned
+  sg["rides"] = df1.completed
+  sg["daily_rides"] = sg.rides / DAYS_IN_MONTH
+  sg["eta"] = df2.median_eta
+  sg["cater_rate"] = sg.rides / df3.unique
+  sg["rider_mau"] = df4.active_users
+  sg["completed_riders"] = df1.completed_riders
+  sg["rider_activated"] = df5.all_time
+  sg["rider_resurrected"] = df6.resurrect_all
+  sg["rider_churned"] = df7.churned
+  sg["rider_inflow"] = df5.all_time + df6.resurrect_all - df7.churned
 
-  sg['completed_driver'] = df1.completed_drivers
-  sg['driver_activated'] = df8.all_time
-  sg['driver_resurrected'] = df9.resurrect_all
-  sg['driver_churned'] = df10.churned
-  sg['driver_inflow'] = df8.all_time + df9.resurrect_all - df10.churned
+  sg["completed_driver"] = df1.completed_drivers
+  sg["driver_activated"] = df8.all_time
+  sg["driver_resurrected"] = df9.resurrect_all
+  sg["driver_churned"] = df10.churned
+  sg["driver_inflow"] = df8.all_time + df9.resurrect_all - df10.churned
 
   sg = sg.T
   sg.columns = [f"{output_date}"]
 
   # KH
-
   kh_queries = [[
-      Query(1625, params={"date": start_date}),
-      Query(2377, params={"date": start_date}),
-      Query(2383, params={"date": start_date}),
-      Query(5349, params={"date": start_date}),
-      Query(2385, params={"date": start_date}),
-      Query(2386, params={"date": start_date}),
-      Query(2545, params={"date_range": {"start": start_date, "end": end_date}}),
-      Query(2547, params={"date": start_date}),
-      Query(2549, params={"date": start_date}),
-      Query(2550, params={"date": start_date}),
-      Query(2664, params={"date": start_date}),
+    Query(1625, params={"date": start_date}),
+    Query(2377, params={"date": start_date}),
+    Query(2383, params={"date": start_date}),
+    Query(5349, params={"date": start_date}),
+    Query(2385, params={"date": start_date}),
+    Query(2386, params={"date": start_date}),
+    Query(2545, params={"date_range": {"start": start_date, "end": end_date}}),
+    Query(2547, params={"date": start_date}),
+    Query(2549, params={"date": start_date}),
+    Query(2550, params={"date": start_date}),
+    Query(2664, params={"date": start_date}),
   ]]
-
 
   for query_list in kh_queries:
     redash.run_queries(query_list)
@@ -106,22 +107,22 @@ def main():
   df10 = redash.get_result(2547)  # KH - Monthly Resurrected Drivers
   df11 = redash.get_result(2549)  # KH - Churned Drivers
 
-  kh['rides'] = df1.fin
-  kh['daily_rides'] = kh.rides/DAYS_IN_MONTH
-  kh['eta'] = df2.eta_fin
-  kh['cater_rate'] = df3.cater_rate
-  kh['rider_mau'] = df4.active_users
-  kh['completed_riders'] = df3.finished_rider_count
-  kh['rider_activated'] = df5.all_time
-  kh['rider_resurrected'] = df6.resurrect_all
-  kh['rider_churned'] = df7.churned
-  kh['rider_inflow'] = df5.all_time + df6.resurrect_all - df7.churned
+  kh["rides"] = df1.fin
+  kh["daily_rides"] = kh.rides / DAYS_IN_MONTH
+  kh["eta"] = df2.eta_fin
+  kh["cater_rate"] = df3.cater_rate
+  kh["rider_mau"] = df4.active_users
+  kh["completed_riders"] = df3.finished_rider_count
+  kh["rider_activated"] = df5.all_time
+  kh["rider_resurrected"] = df6.resurrect_all
+  kh["rider_churned"] = df7.churned
+  kh["rider_inflow"] = df5.all_time + df6.resurrect_all - df7.churned
 
-  kh['completed_driver'] = df8.finished_drivers
-  kh['driver_activated'] = df9.all_first_drivers
-  kh['driver_resurrected'] = df10.resurrect_all
-  kh['driver_churned'] = df11.churned
-  kh['driver_inflow'] = df9.all_first_drivers + df10.resurrect_all - df11.churned
+  kh["completed_driver"] = df8.finished_drivers
+  kh["driver_activated"] = df9.all_first_drivers
+  kh["driver_resurrected"] = df10.resurrect_all
+  kh["driver_churned"] = df11.churned
+  kh["driver_inflow"] = df9.all_first_drivers + df10.resurrect_all - df11.churned
 
   kh = kh.T
   kh.columns = [f"{output_date}"]
@@ -148,28 +149,28 @@ def main():
   df5 = redash.get_result(4582)   # VN - Riders CAR
   df6 = redash.get_result(4578)   # VN - Drivers CAR
 
-  vn['rides'] = df1.completed
-  vn['daily_rides'] = vn.rides/DAYS_IN_MONTH
-  vn['eta'] = df2.median_eta
-  vn['cater_rate'] = vn.rides/df3.unique
-  vn['rider_mau'] = df4.active_users
-  vn['completed_riders'] = df1.completed_riders
-  vn['rider_activated'] = df5.activated
-  vn['rider_resurrected'] = df5.resurrected
-  vn['rider_churned'] = df5.churned
-  vn['rider_inflow'] = df5.activated + df5.resurrected - df5.churned
+  vn["rides"] = df1.completed
+  vn["daily_rides"] = vn.rides / DAYS_IN_MONTH
+  vn["eta"] = df2.median_eta
+  vn["cater_rate"] = vn.rides / df3.unique
+  vn["rider_mau"] = df4.active_users
+  vn["completed_riders"] = df1.completed_riders
+  vn["rider_activated"] = df5.activated
+  vn["rider_resurrected"] = df5.resurrected
+  vn["rider_churned"] = df5.churned
+  vn["rider_inflow"] = df5.activated + df5.resurrected - df5.churned
 
-  vn['completed_driver'] = df1.completed_drivers
-  vn['driver_activated'] = df6.activated
-  vn['driver_resurrected'] = df6.resurrected
-  vn['driver_churned'] = df6.churned
-  vn['driver_inflow'] = df6.activated + df6.resurrected - df6.churned
+  vn["completed_driver"] = df1.completed_drivers
+  vn["driver_activated"] = df6.activated
+  vn["driver_resurrected"] = df6.resurrected
+  vn["driver_churned"] = df6.churned
+  vn["driver_inflow"] = df6.activated + df6.resurrected - df6.churned
 
   vn = vn.T
   vn.columns = [f"{output_date}"]
 
   # TH
-  region = 'TH'
+  region = "TH"
 
   timezone = TIMEZONES[region]
   region_str = REGIONS[region]
@@ -195,22 +196,22 @@ def main():
   df5 = redash.get_result(3120)   # TH - Riders CAR
   df6 = redash.get_result(3121)   # TH - Drivers CAR
 
-  th['rides'] = df1.completed
-  th['daily_rides'] = th.rides/DAYS_IN_MONTH
-  th['eta'] = df2.daily_median_eta
-  th['cater_rate'] = th.rides/df3.unique
-  th['rider_mau'] = df4.active_users
-  th['completed_riders'] = df1.completed_riders
-  th['rider_activated'] = df5.activated
-  th['rider_resurrected'] = df5.resurrected
-  th['rider_churned'] = df5.churned
-  th['rider_inflow'] = df5.activated + df5.resurrected - df5.churned
+  th["rides"] = df1.completed
+  th["daily_rides"] = th.rides / DAYS_IN_MONTH
+  th["eta"] = df2.daily_median_eta
+  th["cater_rate"] = th.rides / df3.unique
+  th["rider_mau"] = df4.active_users
+  th["completed_riders"] = df1.completed_riders
+  th["rider_activated"] = df5.activated
+  th["rider_resurrected"] = df5.resurrected
+  th["rider_churned"] = df5.churned
+  th["rider_inflow"] = df5.activated + df5.resurrected - df5.churned
 
-  th['completed_driver'] = df1.completed_drivers
-  th['driver_activated'] = df6.activated
-  th['driver_resurrected'] = df6.resurrected
-  th['driver_churned'] = df6.churned
-  th['driver_inflow'] = df6.activated + df6.resurrected - df6.churned
+  th["completed_driver"] = df1.completed_drivers
+  th["driver_activated"] = df6.activated
+  th["driver_resurrected"] = df6.resurrected
+  th["driver_churned"] = df6.churned
+  th["driver_inflow"] = df6.activated + df6.resurrected - df6.churned
 
   th = th.T
   th.columns = [f"{output_date}"]
@@ -237,26 +238,77 @@ def main():
   df5 = redash.get_result(3790)   # HK - User Flow
   df6 = redash.get_result(3785)   # HK - Driver Flow
 
-  hk['rides'] = df1.completed
-  hk['daily_rides'] = hk.rides/DAYS_IN_MONTH
-  hk['eta'] = df2.median_eta
-  hk['cater_rate'] = hk.rides/df3.unique
-  hk['rider_mau'] = df4.active_users
-  hk['completed_riders'] = df1.completed_riders
-  hk['rider_activated'] = df5.activated
-  hk['rider_resurrected'] = df5.resurrected
-  hk['rider_churned'] = df5.churned
-  hk['rider_inflow'] = df5.activated + df5.resurrected - df5.churned
+  hk["rides"] = df1.completed
+  hk["daily_rides"] = hk.rides / DAYS_IN_MONTH
+  hk["eta"] = df2.median_eta
+  hk["cater_rate"] = hk.rides / df3.unique
+  hk["rider_mau"] = df4.active_users
+  hk["completed_riders"] = df1.completed_riders
+  hk["rider_activated"] = df5.activated
+  hk["rider_resurrected"] = df5.resurrected
+  hk["rider_churned"] = df5.churned
+  hk["rider_inflow"] = df5.activated + df5.resurrected - df5.churned
 
-  hk['completed_driver'] = df1.completed_drivers
-  hk['driver_activated'] = df6.activated
-  hk['driver_resurrected'] = df6.resurrected
-  hk['driver_churned'] = df6.churned
-  hk['driver_inflow'] = df6.activated + df6.resurrected - df6.churned
+  hk["completed_driver"] = df1.completed_drivers
+  hk["driver_activated"] = df6.activated
+  hk["driver_resurrected"] = df6.resurrected
+  hk["driver_churned"] = df6.churned
+  hk["driver_inflow"] = df6.activated + df6.resurrected - df6.churned
 
   hk = hk.T
   hk.columns = [f"{output_date}"]
 
+  # NY
+  ny_queries = [[
+    Query(7578, params={"date": start_date}),  # NY - Trips numbers
+    Query(7583, params={"date": start_date}),  # NY - ETA
+    Query(7579, params={"date": start_date}),  # NY - Monthly rides / Unique Trips
+    Query(7621, params={"date": start_date}),  # NY - Active users
+    Query(7591, params={"date": start_date}),  # NY - Rider all time / same month
+    Query(7632, params={"date": start_date}),  # NY - Monthly Resurrected Riders
+    Query(7633, params={"date": start_date}),  # NY - Monthly Churned Riders
+    Query(7625, params={"date": start_date}),  # NY - Driver all time / same month
+    Query(7634, params={"date": start_date}),  # NY - Monthly Resurrected Drivers
+    Query(7635, params={"date": start_date}),  # NY - Monthly Churned Drivers
+  ]]
+
+  for query_list in ny_queries:
+    redash.run_queries(query_list)
+
+  ny = pd.DataFrame()
+
+  df1 = redash.get_result(7578)   # NY - Trips numbers
+  df2 = redash.get_result(7583)   # NY - ETA
+  df3 = redash.get_result(7579)   # NY - Monthly rides / Unique Trips
+  df4 = redash.get_result(7621)   # NY - Active users
+  df5 = redash.get_result(7591)   # NY - Rider all time / same month
+  df6 = redash.get_result(7632)   # NY - Monthly Resurrected Riders
+  df7 = redash.get_result(7633)   # NY - Monthly Churned Riders
+  df8 = redash.get_result(7625)   # NY - Driver all time / same month
+  df9 = redash.get_result(7634)   # NY - Monthly Resurrected Drivers
+  df10 = redash.get_result(7635)  # NY - Monthly Churned Drivers
+
+  ny["rides"] = df1.completed
+  ny["daily_rides"] = ny.rides / DAYS_IN_MONTH
+  ny["eta"] = df2.median_eta
+  ny["cater_rate"] = ny.rides / df3.nyc_unique_booking
+  ny["rider_mau"] = df4.active_users
+  ny["completed_riders"] = df1.completed_riders
+  ny["rider_activated"] = df5.all_time
+  ny["rider_resurrected"] = df6.resurrect_all
+  ny["rider_churned"] = df7.churned
+  ny["rider_inflow"] = df5.all_time + df6.resurrect_all - df7.churned
+
+  ny["completed_driver"] = df1.completed_drivers
+  ny["driver_activated"] = df8.all_time
+  ny["driver_resurrected"] = df9.resurrect_all
+  ny["driver_churned"] = df10.churned
+  ny["driver_inflow"] = df8.all_time + df9.resurrect_all - df10.churned
+
+  ny = ny.T
+  ny.columns = [f"{output_date}"]
+
+  # Excel output — one sheet per region
   output_file = f"Monthly_Report_J_{output_date}.xlsx"
 
   with pd.ExcelWriter(output_file, engine="xlsxwriter") as writer:
@@ -265,11 +317,17 @@ def main():
     vn.to_excel(writer, sheet_name="VN", index=False)
     th.to_excel(writer, sheet_name="TH", index=False)
     hk.to_excel(writer, sheet_name="HK", index=False)
+    ny.to_excel(writer, sheet_name="NY", index=False)
 
   slack = SlackBot()
-  slack.uploadFile(output_file,
-                   os.getenv("SLACK_CHANNEL"),
-                   f"Monthly Report J for {output_date}")
+  slack.uploadFile(
+    output_file,
+    os.getenv("SLACK_CHANNEL"),
+    f"Monthly Report J for {output_date}"
+  )
+
+  print(f"Uploaded {output_file} to Slack")
+
 
 if __name__ == "__main__":
   main()
