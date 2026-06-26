@@ -45,6 +45,7 @@ QIDS = {
     "promo":   7557,   # NY - Promotion Spending Weekly
     "fee":     7558,   # NY - Platform Fee Weekly
     "pm":      7559,   # NY - Payment Method Weekly
+    "fee_breakdown": 7645,  # NY - tips + statutory/regulatory fee totals
 }
 
 # Rate columns arrive from SQL already multiplied by 100 (e.g. 95.32). Store as fractions so
@@ -58,7 +59,7 @@ SECTION_FILL = {
     "Operational": "#DDEBF7",   # blue
     "Driver":      "#FCE4D6",   # orange
     "Rider":       "#E2EFDA",   # green
-    "Fare / Promo": "#EDE7F6",  # purple
+    "Fare / Promo / Fees": "#EDE7F6",  # purple
 }
 
 # ---------------------------------------------------------------------------
@@ -116,17 +117,24 @@ SPEC = [
     ("val", "Rider", "R:D Ratio", "rd_ratio", "dec4"),
     ("blank", None, None, None, None),
 
-    ("val", "Fare / Promo", "Average Fare", "average_fare", "money"),
-    ("val", "Fare / Promo", "Promo Spend", "discount", "money"),
-    ("val", "Fare / Promo", "Promotion Trips", "discount_trips", "int"),
-    ("val", "Fare / Promo", "Non Promotion Trips", "non_promo_trips", "int"),
-    ("val", "Fare / Promo", "Promotion / Completed", "promo_over_completed", "pct"),
-    ("val", "Fare / Promo", "Average Promotion Value", "average_discount", "money"),
-    ("val", "Fare / Promo", "Promo per completed ride", "promo_per_ride", "money"),
-    ("val", "Fare / Promo", "Promo per completed rider", "promo_per_rider", "money"),
-    ("val", "Fare / Promo", "Promo per completed trip / Average Fare", "promo_over_fare", "pct"),
-    ("val", "Fare / Promo", "Platform Fee", "total_system_fee", "money"),
-    ("val", "Fare / Promo", "Platform Fee per Completed Ride", "platform_fee_per_ride", "money"),
+    ("val", "Fare / Promo / Fees", "Average Fare", "average_fare", "money"),
+    ("val", "Fare / Promo / Fees", "Promo Spend", "discount", "money"),
+    ("val", "Fare / Promo / Fees", "Promotion Trips", "discount_trips", "int"),
+    ("val", "Fare / Promo / Fees", "Non Promotion Trips", "non_promo_trips", "int"),
+    ("val", "Fare / Promo / Fees", "Promotion / Completed", "promo_over_completed", "pct"),
+    ("val", "Fare / Promo / Fees", "Average Promotion Value", "average_discount", "money"),
+    ("val", "Fare / Promo / Fees", "Promo per completed ride", "promo_per_ride", "money"),
+    ("val", "Fare / Promo / Fees", "Promo per completed rider", "promo_per_rider", "money"),
+    ("val", "Fare / Promo / Fees", "Promo per completed trip / Average Fare", "promo_over_fare", "pct"),
+    ("val", "Fare / Promo / Fees", "Platform Fee", "total_system_fee", "money"),
+    ("val", "Fare / Promo / Fees", "Platform Fee per Completed Ride", "platform_fee_per_ride", "money"),
+    ("blank", None, None, None, None),
+    ("val", "Fare / Promo / Fees", "Total Tips", "total_tips", "money"),
+    ("val", "Fare / Promo / Fees", "Total Stat Fees", "total_stat_fees", "money"),
+    ("val", "Fare / Promo / Fees", "Total Black Car Fund", "total_black_car_fund", "money"),
+    ("val", "Fare / Promo / Fees", "Total Congestion Fee", "total_congestion_fee", "money"),
+    ("val", "Fare / Promo / Fees", "Total Congestion Surcharge", "total_congestion_surcharge", "money"),
+    ("val", "Fare / Promo / Fees", "Total NY Sales Tax", "total_ny_sales_tax", "money"),
 ]
 
 
@@ -183,6 +191,20 @@ def extract_values(res):
 
         "total_system_fee": cell(res["fee"], "total_system_fee"),
     }
+    # Fee breakdown (query 7645). "Total Stat Fees" = base etc_fee + additional etc fees (type 999).
+    fb = res["fee_breakdown"]
+    etc = cell(fb, "total_etc_fee")
+    add_etc = cell(fb, "total_additional_etc_fee")
+    v["total_tips"] = cell(fb, "total_tip_amount")
+    v["total_stat_fees"] = (
+        None if etc is None and add_etc is None
+        else (float(etc) if etc is not None else 0.0) + (float(add_etc) if add_etc is not None else 0.0)
+    )
+    v["total_black_car_fund"] = cell(fb, "total_black_car_fund_surcharge")
+    v["total_congestion_fee"] = cell(fb, "total_mta_congestion_fee")
+    v["total_congestion_surcharge"] = cell(fb, "total_nys_congestion_surcharge")
+    v["total_ny_sales_tax"] = cell(fb, "total_ny_sales_tax")
+
     # Convert SQL percent values (x100) to fractions for Excel's percent format.
     for k in RATE_KEYS:
         if v.get(k) is not None:
@@ -351,7 +373,16 @@ def main():
     load_dotenv()
     redash = Redash(key=os.getenv("REDASH_API_KEY"), base_url=os.getenv("REDASH_BASE_URL"))
 
-    start_date = last_complete_monday().strftime("%Y-%m-%d")
+    # Optional override: `python weekly/ny.py 2026-06-08` to backfill a specific week.
+    # Must be a Monday (queries bucket on week-start); a non-Monday snaps back. No arg = last week.
+    if len(sys.argv) > 1:
+        d = datetime.strptime(sys.argv[1], "%Y-%m-%d").date()
+        if d.weekday() != 0:
+            d = d - timedelta(days=d.weekday())
+            print(f"Note: snapped to week-start Monday {d}")
+        start_date = d.strftime("%Y-%m-%d")
+    else:
+        start_date = last_complete_monday().strftime("%Y-%m-%d")
     output_date = datetime.strptime(start_date, "%Y-%m-%d").strftime("%d_%b_%Y")
     print(f"NY weekly for week starting {start_date}")
 
