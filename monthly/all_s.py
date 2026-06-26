@@ -24,6 +24,7 @@ def main():
     Query(3001, params={'date': start_date}),
     Query(3004, params={'date': start_date}),
     Query(1581),
+    Query(7644, params={'date': start_date}),  # NY - Total trips and GMV
   ]]
 
   for query_list in queries:
@@ -34,29 +35,45 @@ def main():
   df3 = redash.get_result(3001)  # GMV
   df4 = redash.get_result(3004)  # KH - T1
   df5 = redash.get_result(1581)  # KH - T1 signup
+  df6 = redash.get_result(7644)  # NY - Total trips and GMV
 
-  summary = df3.pivot_table(
-    index='trip_month',
-    columns='region',
-    values=['total_finished_rides', 'gmv']
+  # Combine SEA GMV summary with NY GMV summary
+  gmv_summary_df = pd.concat([df3, df6], ignore_index=True)
+  
+  gmv_summary_df['trip_month'] = pd.to_datetime(gmv_summary_df['trip_month']).dt.strftime('%Y-%m-%d')
+  gmv_summary_df['region'] = gmv_summary_df['region'].str.upper()
+  
+  summary = gmv_summary_df.pivot_table(
+      index='trip_month',
+      columns='region',
+      values=['total_finished_rides', 'gmv']
   )
-
+  
   # Flatten the MultiIndex columns
-  summary.columns = [f'{metric.lower()}_{region.lower()}' for metric, region in summary.columns]
+  summary.columns = [
+      f'{metric.lower()}_{region.lower()}'
+      for metric, region in summary.columns
+  ]
+  
   summary = summary.reset_index()
-
+  
   # Reorder columns to match desired region order
-  desired_order = ['sg', 'kh', 'vn', 'th', 'hk']
+  desired_order = ['sg', 'kh', 'vn', 'th', 'hk', 'ny']
+  
   ordered_cols = ['trip_month']
   for region in desired_order:
       ordered_cols.append(f'total_finished_rides_{region}')
       ordered_cols.append(f'gmv_{region}')
-  summary = summary[ordered_cols]
-
-  summary.insert(11, 'gmv_hk_sgd', pd.NA)
-  summary.insert(9, 'gmv_th_sgd', pd.NA)
-  summary.insert(7, 'gmv_vn_sgd', pd.NA)
-  summary.insert(5, 'gmv_kh_sgd', pd.NA)
+  
+  # Use reindex so script does not break if one region has no data
+  summary = summary.reindex(columns=ordered_cols)
+  
+  # Add SGD conversion placeholder columns
+  summary.insert(summary.columns.get_loc('gmv_kh') + 1, 'gmv_kh_sgd', pd.NA)
+  summary.insert(summary.columns.get_loc('gmv_vn') + 1, 'gmv_vn_sgd', pd.NA)
+  summary.insert(summary.columns.get_loc('gmv_th') + 1, 'gmv_th_sgd', pd.NA)
+  summary.insert(summary.columns.get_loc('gmv_hk') + 1, 'gmv_hk_sgd', pd.NA)
+  summary.insert(summary.columns.get_loc('gmv_ny') + 1, 'gmv_ny_sgd', pd.NA)
 
   sg_anytada = df1[df1['product_type'] == 'AnyTada'].copy()
   sg_taxi = df1[df1['product_type'] == 'Taxi'].copy()
