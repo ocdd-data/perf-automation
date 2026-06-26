@@ -1,0 +1,36 @@
+name: NY Monthly Run
+
+on:
+  schedule:
+    - cron: '0 12 1 * *'   # 1st of every month at 12:00 UTC (~7–8am America/New_York),
+                            # safely after the NY month closes (last day 23:59 ET ≈ 04:00 UTC).
+  workflow_dispatch:        # allows manual triggering from the Actions tab
+
+jobs:
+  run-ny-perf-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set up environment variables
+        run: |
+          echo "REDASH_API_KEY=${{ secrets.REDASH_API_KEY }}" >> .env
+          echo "REDASH_BASE_URL=${{ secrets.REDASH_BASE_URL }}" >> .env
+          echo "SLACK_TOKEN=${{ secrets.SLACK_TOKEN }}" >> .env
+          echo "SLACK_CHANNEL=${{ secrets.SLACK_CHANNEL }}" >> .env
+          echo "SLACK_CHANNEL_NY=${{ secrets.SLACK_CHANNEL_NY }}" >> .env
+
+      - name: Run NY Perf Report Script
+        run: python -m monthly.ny
