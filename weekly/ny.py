@@ -117,7 +117,8 @@ SPEC = [
     ("val", "Rider", "R:D Ratio", "rd_ratio", "dec4"),
     ("blank", None, None, None, None),
 
-    ("val", "Fare / Promo / Fees", "Average Fare", "average_fare", "money"),
+    ("val", "Fare / Promo / Fees", "Average Rider Fare", "avg_rider_fare", "money"),
+    ("val", "Fare / Promo / Fees", "Average Driver Earn", "avg_driver_earn", "money"),
     ("val", "Fare / Promo / Fees", "Promo Spend", "discount", "money"),
     ("val", "Fare / Promo / Fees", "Promotion Trips", "discount_trips", "int"),
     ("val", "Fare / Promo / Fees", "Non Promotion Trips", "non_promo_trips", "int"),
@@ -183,7 +184,8 @@ def extract_values(res):
 
         "avg_online_drivers": cell(res["online"], "avg_online_drivers"),
         "wau": cell(res["wau"], "active_users"),
-        "average_fare": cell(res["fare"], "average_fare"),
+        "avg_rider_fare": cell(res["fare"], "avg_rider_pay"),
+        "avg_driver_earn": cell(res["fare"], "avg_driver_earn"),
 
         "discount_trips": cell(res["promo"], "discount_trips"),
         "discount": cell(res["promo"], "discount"),
@@ -241,8 +243,8 @@ def compute_derived(v):
         "rd_ratio": _safe_div(v.get("rider_weekly_complete"), v.get("driver_weekly_complete")),
         "platform_fee_per_ride": _safe_div(v.get("total_system_fee"), v.get("completed")),
     }
-    # promo-per-ride relative to average fare (ratio of two derived/base numbers)
-    d["promo_over_fare"] = _safe_div(d["promo_per_ride"], v.get("average_fare"))
+    # promo-per-ride relative to rider fare (the rider-paid base, formerly "average fare")
+    d["promo_over_fare"] = _safe_div(d["promo_per_ride"], v.get("avg_rider_fare"))
     return d
 
 
