@@ -1,6 +1,6 @@
 """
 KPI Tracker — fetches previous month data and outputs a clean Excel.
-Sheets: SG, HK, TH, VN-HCMC, VN-Hanoi, KH-PNH, KH-OTHERS
+Sheets: SG, HK, NY, TH, VN-HCMC, VN-Hanoi, KH-PNH, KH-OTHERS
 """
 
 import os
@@ -305,6 +305,63 @@ def rows_kh(gen, d2w, d3w, d4w, has_2w=True):
     return out
 
 
+def rows_ny(d):
+    """
+    NY — single car type only (no 2W/3W split, mirrors the SG/HK single-block
+    layout). Core sections/labels are identical to rows_sg_hk so the sheet stays
+    consistent with SG/HK; NY-specific metrics that those regions don't track
+    (sign ups, resurrected riders/drivers, time-to-expire, wait-before-cancel)
+    are appended within their relevant sections.
+    The "4W" type label is used for the single block, same as SG/HK.
+    """
+    return [
+        ("4W", "Demand",          "Unique Rider Searches (Daily Average)",          d.get("unique_rider_searches")),
+        (None,  None,             "Monthly App Opens",                              d.get("monthly_app_opens")),
+        (None,  None,             "Monthly Searches",                               d.get("monthly_searches")),
+        (None,  None,             "Monthly Unique Riders",                          d.get("monthly_unique_riders")),
+        (None,  None,             "Unique Bookings Created (Daily Average)",        d.get("unique_bookings_daily")),
+        (None,  None,             "Completed Trips (Daily Average)",                d.get("completed_daily")),
+        (None,  None,             "Book-Search Ratio",                              d.get("book_search_ratio")),
+        (None,  None,             "Completion Rate",                                d.get("completion_rate")),
+        (None,  "Supply",         "Daily Avg Drivers with >= 1 Ping",              d.get("pinged_drivers_daily")),
+        (None,  None,             "Daily Avg Online Drivers",                       d.get("online_drivers_daily")),
+        (None,  None,             "Average Driver Online Hours",                    d.get("avg_online_hours")),
+        (None,  None,             "Monthly Unique Completed Drivers",               d.get("completed_drivers")),
+        (None,  None,             "Avg Completed Trip Per Driver",                  d.get("ride_per_driver")),
+        (None,  None,             "Driver Utilisation (utilised / online)",         d.get("driver_utilisation")),
+        (None,  "Efficiency",     "Match Rate",                                     d.get("match_rate")),
+        (None,  None,             "First Try Cater Rate",                           d.get("first_try_cater_rate")),
+        (None,  None,             "Median Time to Match (Seconds)",                 d.get("median_time_to_match_sec")),
+        (None,  None,             "Median Time to Expire (Seconds)",                d.get("median_time_to_expire_sec")),
+        (None,  None,             "Avg Wait Before Rider Cancel (Seconds)",         d.get("avg_wait_before_rider_cancel")),
+        (None,  None,             "Median Pick Up ETA (Minutes)",                   d.get("median_eta")),
+        # Unit Economics / Spend kept for parity with SG/HK; no NY fare/spend
+        # queries are wired yet, so these stay None until those queries exist.
+        (None,  "Unit Economics", "Median Searched Fare",                           d.get("median_searched_fare")),
+        (None,  None,             "Median Booked Fare",                             d.get("median_booked_fare")),
+        (None,  None,             "Median Completed Fare (Rider)",                  d.get("median_completed_fare")),
+        (None,  None,             "Median Matched Trip Driver Earnings",             d.get("median_matched_driver_earnings")),
+        (None,  None,             "Median Completed Driver Earnings",               d.get("median_completed_driver_earnings")),
+        (None,  "Spend",          "Driver Incentive Cost / Trip",                   d.get("driver_incentive")),
+        (None,  None,             "Rider Promo Cost / Trip",                        d.get("rider_promo_cost")),
+        (None,  None,             "Rider Promo Rate",                               d.get("rider_promo_rate")),
+        (None,  None,             "Non-trip Marketing Cost",                        d.get("non_trip_marketing")),
+        (None,  None,             "Total Spend (Driver+Rider) / Trip",              d.get("total_spend")),
+        (None,  None,             "Rider+Driver System Fee (Monthly Average)",      d.get("system_fee")),
+        (None,  "Retention",      "Rider Sign Ups",                                 d.get("rider_sign_ups")),
+        (None,  None,             "Rider Completed",                                d.get("rider_completed")),
+        (None,  None,             "Rider Activated (All-Time Completed)",           d.get("rider_activated")),
+        # NY Car table exposes a churned COUNT (not a rate) -> labelled as count.
+        (None,  None,             "Riders Churned (Monthly)",                       d.get("riders_churned")),
+        (None,  None,             "Monthly Resurrected Riders",                     d.get("resurrected_riders")),
+        (None,  None,             "Driver Sign Ups",                                d.get("driver_sign_ups")),
+        (None,  None,             "Driver Completed",                               d.get("driver_completed")),
+        (None,  None,             "Driver Activated (All-Time Completed)",          d.get("driver_activated")),
+        (None,  None,             "Drivers Churned (Monthly)",                      d.get("drivers_churned")),
+        (None,  None,             "Monthly Resurrected Drivers",                    d.get("resurrected_drivers")),
+    ]
+
+
 # ---------------------------------------------------------------------------
 # SG — confirmed working
 # ---------------------------------------------------------------------------
@@ -468,6 +525,150 @@ def fetch_hk(redash, date, start_date, end_date, churn_start):
         "driver_completed":                 safe_val(df1, "completed_drivers"),
         "driver_activated":                 safe_val(df6, "all_time"),
         "driver_churn_rate":                None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# NY — single car type (one vehicle class only, no 2W/3W/4W split)
+# ---------------------------------------------------------------------------
+
+def fetch_ny(redash, date, start_date, end_date, churn_start):
+    """
+    New York KPI fetch.
+
+    NY operates a SINGLE car type, so — unlike TH/VN/KH — there is no vehicle
+    split here: every metric maps straight into one flat dict (same shape as
+    fetch_sg / fetch_hk). The result is rendered with rows_ny().
+
+    Timezone: the NY Redash queries (7578-7637) are NY-dedicated and already
+    aggregate on New York local time (America/New_York) internally, exactly as
+    the SG/HK dedicated queries bake in their own locale. We therefore pass only
+    {"date": date} (the report month's last day) — the same parameter convention
+    used by the SG dedicated queries — and do not forward a timezone param.
+    """
+    # All NY queries are dedicated monthly queries -> {"date": date}, mirroring SG.
+    queries = [
+        Query(7578, params={"date": date}),   # Trips numbers (demand/matched/completed/drivers)
+        Query(7579, params={"date": date}),   # Monthly rides (incl. unique rider metrics)
+        Query(7590, params={"date": date}),   # Rider sign up
+        Query(7591, params={"date": date}),   # Rider all time / same month
+        Query(7622, params={"date": date}),   # User open and search
+        Query(7592, params={"date": date}),   # Rider book and completed
+        Query(7624, params={"date": date}),   # Rider wait before cancel
+        Query(7586, params={"date": date}),   # Driver online and utilisation hour
+        Query(7585, params={"date": date}),   # Drivers daily
+        Query(7584, params={"date": date}),   # Driver sign up
+        Query(7625, params={"date": date}),   # Driver all time / same month
+        Query(7583, params={"date": date}),   # ETA
+        Query(7632, params={"date": date}),   # Monthly Resurrected Riders
+        Query(7634, params={"date": date}),   # Monthly Resurrected Drivers
+        Query(7636, params={"date": date}),   # Pinged Drivers daily
+        Query(7594, params={"date": date}),   # Monthly First Attempt Completion
+        Query(7593, params={"date": date}),   # Rider Car (activation/churn)
+        Query(7588, params={"date": date}),   # Driver Car (activation/churn)
+        Query(7595, params={"date": date}),   # Median Time to Match and Expire
+        Query(7637, params={"date": date}),   # Book search logic
+
+        # Fares / promo / system fee use a real {"Date Range"} param (like the
+        # shared SG/HK queries 6138/6030/6189), NOT the month-locked "date" param.
+        # NOTE: 7646 (fares) and 7655 (system fee) are PROVISIONAL / unconfirmed:
+        #   - NY fare maths are more complex and not yet finalised.
+        #   - NY driver software fee is logged in a separate table, so the system
+        #     fee figure may change once that is reconciled.
+        Query(7646, params={"Date Range": dr(start_date, end_date)}),  # Fares (UNCONFIRMED)
+        Query(7654, params={"Date Range": dr(start_date, end_date)}),  # Rider promo
+        Query(7655, params={"Date Range": dr(start_date, end_date)}),  # System fee (UNCONFIRMED)
+    ]
+    redash.run_queries(queries)
+
+    df_trips         = redash.get_result(7578)
+    df_rides         = redash.get_result(7579)
+    df_rider_signup  = redash.get_result(7590)
+    df_rider_atsm    = redash.get_result(7591)
+    df_search        = redash.get_result(7622)
+    df_book          = redash.get_result(7592)
+    df_wait          = redash.get_result(7624)
+    df_online        = redash.get_result(7586)
+    df_drivers_daily = redash.get_result(7585)
+    df_driver_signup = redash.get_result(7584)
+    df_driver_atsm   = redash.get_result(7625)
+    df_eta           = redash.get_result(7583)
+    df_res_rider     = redash.get_result(7632)
+    df_res_driver    = redash.get_result(7634)
+    df_pinged        = redash.get_result(7636)
+    df_fac           = redash.get_result(7594)
+    df_rider_car     = redash.get_result(7593)
+    df_driver_car    = redash.get_result(7588)
+    df_match_expire  = redash.get_result(7595)
+    df_bsr           = redash.get_result(7637)
+    df_fares         = redash.get_result(7646)   # UNCONFIRMED (NY fare calc complex)
+    df_promo         = redash.get_result(7654)
+    df_fee           = redash.get_result(7655)   # UNCONFIRMED (driver software fee in separate table)
+
+    days = int(date.split("-")[2])
+
+    # Column names below are the ACTUAL NY Redash output columns (verified by
+    # introspecting each query). Each query returns a single aggregated row, so
+    # safe_val (first row) is sufficient — no month-row picking needed.
+    return {
+        # --- Demand ---
+        # 7637 = "Book search logic" -> daily-avg unique search/book + book-search ratio
+        "unique_rider_searches":            safe_val(df_bsr,    "rider_unique_search_daily_avg"),
+        "monthly_app_opens":                safe_val(df_search, "open_monthly"),      # 7622
+        "monthly_searches":                 safe_val(df_search, "search_monthly"),    # 7622
+        "monthly_unique_riders":            safe_val(df_rides,  "nyc_rider_completed"),  # 7579 unique completed riders
+        "unique_bookings_daily":            safe_val(df_bsr,    "rider_unique_book_daily_avg"),  # 7637
+        "completed_daily":                  div(safe_val(df_trips, "completed"), days),          # 7578
+        "book_search_ratio":                safe_val(df_bsr,    "book_search_ratio_daily"),       # 7637
+        "completion_rate":                  div(safe_val(df_trips, "completed"), safe_val(df_trips, "demand")),  # 7578
+
+        # --- Supply ---
+        "pinged_drivers_daily":             safe_val(df_pinged, "pinged_drivers_daily"),   # 7636
+        "online_drivers_daily":             safe_val(df_online, "online_driver_daily"),    # 7586
+        "avg_online_hours":                 safe_val(df_online, "avg_online_hour"),        # 7586
+        "completed_drivers":                safe_val(df_trips,  "completed_drivers"),      # 7578
+        "ride_per_driver":                  safe_val(df_drivers_daily, "ride_per_driver"), # 7585
+        "driver_utilisation":               div(safe_val(df_online, "avg_utilisation_hours"),
+                                                safe_val(df_online, "avg_online_hour")),   # 7586
+
+        # --- Efficiency ---
+        "match_rate":                       div(safe_val(df_trips, "matched"), safe_val(df_trips, "demand")),  # 7578
+        "first_try_cater_rate":             safe_val(df_fac,         "first_try_cater_rate"),       # 7594
+        "median_time_to_match_sec":         safe_val(df_match_expire,"median_time_to_match_sec"),   # 7595
+        "median_time_to_expire_sec":        safe_val(df_match_expire,"median_time_to_expire_sec"),  # 7595
+        "avg_wait_before_rider_cancel":     safe_val(df_wait,        "avg_waiting_time_rider_cxl"), # 7624
+        "median_eta":                       safe_val(df_eta,         "median_eta"),                 # 7583
+
+        # --- Unit Economics (7646; single 4W row) -- PROVISIONAL: NY fare maths
+        #     are more complex and not yet confirmed, so these may change. ---
+        "median_searched_fare":             safe_val(df_fares, "median_searched_fare"),
+        "median_booked_fare":               safe_val(df_fares, "median_booked_fare"),
+        "median_completed_fare":            safe_val(df_fares, "median_completed_fare"),
+        "median_matched_driver_earnings":   safe_val(df_fares, "median_matched_driver_earnings"),
+        "median_completed_driver_earnings": safe_val(df_fares, "median_completed_driver_earnings"),
+
+        # --- Spend ---
+        "driver_incentive":                 None,                                          # no NY query yet
+        "rider_promo_cost":                 safe_val(df_promo, "rider_promo_cost_per_trip"),  # 7654
+        "rider_promo_rate":                 safe_val(df_promo, "rider_promo_rate"),           # 7654
+        "non_trip_marketing":               None,
+        "total_spend":                      None,
+        # PROVISIONAL: NY driver software fee is in a separate table -> may change.
+        "system_fee":                       safe_val(df_fee, "avg_system_fee_per_trip"),      # 7655
+
+        # --- Retention ---
+        "rider_sign_ups":                   safe_val(df_rider_signup, "rider_signup"),    # 7590
+        "rider_completed":                  safe_val(df_book,         "completed_monthly"),# 7592
+        # all_time = all-time unique completed riders (0 while NY is pre-completion)
+        "rider_activated":                  safe_val(df_rider_atsm,   "all_time"),         # 7591
+        "riders_churned":                   safe_val(df_rider_car,    "churned"),          # 7593 (count)
+        "resurrected_riders":               safe_val(df_res_rider,    "resurrect_all"),    # 7632
+
+        "driver_sign_ups":                  safe_val(df_driver_signup,"driver_sign_up"),   # 7584
+        "driver_completed":                 safe_val(df_trips,        "completed_drivers"),# 7578
+        "driver_activated":                 safe_val(df_driver_atsm,  "all_time"),         # 7625
+        "drivers_churned":                  safe_val(df_driver_car,   "churned"),          # 7588 (count)
+        "resurrected_drivers":              safe_val(df_res_driver,   "resurrect_all"),    # 7634
     }
 
 
@@ -955,6 +1156,7 @@ def main():
     tasks = [
         ("SG",        lambda: (fetch_sg(redash, date, start_date, end_date, churn_start),              "sg_hk")),
         ("HK",        lambda: (fetch_hk(redash, date, start_date, end_date, churn_start),              "sg_hk")),
+        ("NY",        lambda: (fetch_ny(redash, date, start_date, end_date, churn_start),              "ny")),
         ("TH",        lambda: (fetch_th(redash, date, start_date, end_date, churn_start),              "th_vn")),
         ("VN-HCMC",   lambda: (fetch_vn(redash, start_date, end_date, churn_start, "HCM"),             "th_vn")),
         ("VN-Hanoi",  lambda: (fetch_vn(redash, start_date, end_date, churn_start, "HAN"),             "th_vn")),
@@ -971,6 +1173,9 @@ def main():
 
             if layout == "sg_hk":
                 write_sheet(ws, label, rows_sg_hk(result))
+
+            elif layout == "ny":
+                write_sheet(ws, label, rows_ny(result))
 
             elif layout == "th_vn":
                 gen, d2w, d4w = result
