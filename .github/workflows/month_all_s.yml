@@ -4,7 +4,7 @@ name: S Monthly Run
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: '00 00 1 * *'
+    - cron: '00 00 2 * *'   # 2nd of every month, 00:00 UTC (8am SGT)
   workflow_dispatch:
 
 jobs:

@@ -2,8 +2,9 @@ name: NY Monthly Run
 
 on:
   schedule:
-    - cron: '0 12 1 * *'   # 1st of every month at 12:00 UTC (~7–8am America/New_York),
-                            # safely after the NY month closes (last day 23:59 ET ≈ 04:00 UTC).
+    # 2nd of each month 01:00 UTC = 2nd 09:00 SGT — same clock time as SG monthly
+    # (1st 01:00 UTC / 1st 09:00 SGT), one day later. NY month closes 1st ~04:00–05:00 UTC.
+    - cron: '0 1 2 * *'
   workflow_dispatch:        # allows manual triggering from the Actions tab
 
 jobs:

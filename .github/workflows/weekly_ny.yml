@@ -3,9 +3,9 @@ name: NY Weekly Run
 
 on:
   schedule:
-    # Monday 12:00 UTC (~07:00–08:00 America/New_York). The NY week ends Sun 23:59 ET
-    # (~Mon 04:00–05:00 UTC), so this is safely after the week has closed.
-    - cron: '00 12 * * 1'
+    # Monday 23:00 UTC = Tuesday 07:00 SGT — same clock time as the other weeklies
+    # (Sun 23:00 UTC / Mon 07:00 SGT), shifted one day. NY's Mon–Sun week closed Mon ~04:00 UTC.
+    - cron: '00 23 * * 1'
   workflow_dispatch:        # lets you trigger a run manually from the Actions tab
 
 jobs:
