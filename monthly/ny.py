@@ -143,7 +143,7 @@ def main():
     df['driver_average_utilisation_hours'] = d_online.avg_utilisation_hours
     df['ping_per_driver_daily'] = ping.ping_per_driver_daily
     df['driver_waiting_before_cancel'] = wait.avg_waiting_time_driver_cxl
-    df['driver_cancellation_rate'] = trips.driver_cancel / trips.matched * 100
+    df['driver_cancellation_rate'] = trips.driver_cancel / trips.matched
     df['drivers_ft_unique'] = df.driver_ft_all_time / df.completed_driver
     df['drivers_repeated'] = driver_arc.repeated
     df['resurrect_2_month_driver'] = d_resurrect.resurrect_2_month
@@ -190,7 +190,7 @@ def main():
     df['complete_per_user'] = df.rides / df.rider_unique_complete_monthly
     df['duplicate_ratio'] = df.demand / rides.nyc_unique_booking     # SG: demand / df7.unique
     df['rider_waiting_before_cancel'] = wait.avg_waiting_time_rider_cxl
-    df['rider_cancellation_rate'] = trips.rider_cancel / df.demand * 100
+    df['rider_cancellation_rate'] = trips.rider_cancel / df.demand
     df['riders_ft_unique'] = df.rider_ft_all_time / df.rider_unique_complete_monthly
     df['riders_repeated'] = rider_arc.repeated
     df['resurrect_2_month'] = r_resurrect.resurrect_2_month
