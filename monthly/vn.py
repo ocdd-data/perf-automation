@@ -310,9 +310,20 @@ def process_city_data(redash, start_date, end_date, DAYS_IN_MONTH, output_date, 
 
     df = df.copy()
 
+    # These metrics are only meaningful at the VN (ALL) level, so drop them from
+    # the per-city (HCM/HAN) sheets rather than showing placeholder 0/None rows.
+    if city != "ALL":
+        df = df.drop(columns=[
+            'driver_downloads',
+            'rider_downloads',
+            'rider_signup',
+            'rider_signup_daily',
+            'rider_same_month_activation',
+        ], errors='ignore')
+
     df = df.T
     df.columns = [f"{output_date}"]
-    
+
     return df
 
 
