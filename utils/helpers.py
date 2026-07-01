@@ -28,12 +28,15 @@ class Redash:
   def run_queries(self, queries:'list[Query]') -> None:
     for query in queries:
       self.run_query(query, batch=True)
-    while queries:
-      queries = list(filter(lambda query: self.status[query.id] == 1, queries))
+    while any(self.status[query.id] == 1 for query in queries):
       for query in queries:
-        self.poll_job(query)
-      time.sleep(1)
-    
+        if self.status[query.id] == 1:
+          self.poll_job(query)
+      # Only wait if queries are still in flight; skips a wasted trailing
+      # sleep once the batch has fully completed.
+      if any(self.status[query.id] == 1 for query in queries):
+        time.sleep(1)
+
     # clear job dictonary when completed
     self.job = defaultdict(lambda: None)
 
@@ -54,11 +57,27 @@ class Redash:
       while self.status[query.id] == 1:
         self.poll_job(query)
   
+  def __get_job(self, job_id, attempts=3):
+    # GET a job's status, retrying briefly on transient network errors.
+    # A hard failure after all attempts is re-raised (unchanged behaviour).
+    for attempt in range(1, attempts + 1):
+      try:
+        return requests.get(f"{self.__BASE_URL}/api/jobs/{job_id}?api_key={self.__API_KEY}", timeout=60)
+      except requests.RequestException:
+        if attempt == attempts:
+          raise
+        time.sleep(1)
+
   def poll_job(self, query:Query) -> None:
     job = self.job[query.id]
 
+    if job is None:
+      # No job recorded (e.g. the submit POST failed); nothing to poll.
+      self.status[query.id] = 3
+      return
+
     if job['status'] not in (3,4):
-      response = requests.get(f"{self.__BASE_URL}/api/jobs/{job['id']}?api_key={self.__API_KEY}", timeout=60)
+      response = self.__get_job(job['id'])
       self.job[query.id] = response.json()['job']
 
     elif job['status'] == 3:

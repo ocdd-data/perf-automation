@@ -1,9 +1,9 @@
 import os
-from datetime import datetime, timedelta
 
 import pandas as pd
 from dotenv import load_dotenv
 
+from utils.dates import previous_month
 from utils.helpers import Query, Redash
 from utils.slack import SlackBot
 
@@ -13,17 +13,11 @@ def main():
 
   redash = Redash(key=os.getenv("REDASH_API_KEY"), base_url=os.getenv("REDASH_BASE_URL"))
 
-  dt_format = "%Y-%m-%d"
-  start_date = (datetime.today().replace(day=1) - timedelta(days=1)).replace(day=1).strftime(dt_format)
-  end_date = (datetime.today().replace(day=1) - timedelta(days=1)).strftime(dt_format)
-
-  DAYS_IN_MONTH = int(end_date.split("-")[2])
-
-  output_date = datetime.strptime(start_date, dt_format).strftime("%b_%Y")
+  start_date, end_date, DAYS_IN_MONTH, output_date = previous_month()
   region_id = 7
   region = "HK"
 
-  queries = [[
+  queries = [
     Query(3771, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(3772, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(3773, params={"date_range": {"start": start_date, "end": end_date}}),
@@ -44,10 +38,9 @@ def main():
     Query(4753, params={"date_range": {"start": start_date, "end": end_date}}),
     Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id}),
     Query(4819, params={"date_range": {"start": start_date, "end": end_date}, "region": region}),
-  ]]
+  ]
 
-  for query_list in queries:
-    redash.run_queries(query_list)
+  redash.run_queries(queries)
 
   bq1 = redash.get_result(3773)
   bq2 = redash.get_result(3775)

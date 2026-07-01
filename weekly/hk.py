@@ -1,9 +1,9 @@
 import os
-from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 from dotenv import load_dotenv
 
+from utils.dates import previous_week_start
 from utils.helpers import Query, Redash
 from utils.slack import SlackBot
 
@@ -13,13 +13,9 @@ def main():
 
   redash = Redash(key=os.getenv("REDASH_API_KEY"), base_url=os.getenv("REDASH_BASE_URL"))
 
-  dt_format = "%Y-%m-%d"
-  local_now = datetime.now(timezone.utc) + timedelta(hours=8)
-  start_date = (local_now - timedelta(days=local_now.weekday() + 7)).strftime(dt_format)
+  start_date, output_date = previous_week_start(8)
 
-  output_date = datetime.strptime(start_date, dt_format).strftime("%d_%b_%Y")
-
-  queries = [[
+  queries = [
     Query(4620, params={"week_start_date": start_date}),
     Query(4621, params={"week_start_date": start_date}),
     Query(4628, params={"week_start_date": start_date}),
@@ -28,10 +24,9 @@ def main():
     Query(4633, params={"week_start_date": start_date}),
     Query(4634, params={"week_start_date": start_date}),
     Query(4635, params={"week_start_date": start_date}),
-  ]]
+  ]
 
-  for query_list in queries:
-    redash.run_queries(query_list)
+  redash.run_queries(queries)
 
   # Fetch results
   df1 = redash.get_result(4620) # HK - Completed trips

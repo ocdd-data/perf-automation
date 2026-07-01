@@ -1,11 +1,10 @@
 import os
-import sys
-from datetime import datetime, timedelta
 
 import pandas as pd
 from dotenv import load_dotenv
 
 from utils.constants import IDS, REGIONS, TIMEZONES
+from utils.dates import previous_month
 from utils.helpers import Query, Redash
 from utils.slack import SlackBot
 
@@ -14,15 +13,9 @@ def main():
 
   redash = Redash(key=os.getenv("REDASH_API_KEY"), base_url=os.getenv("REDASH_BASE_URL"))
 
-  # Get last date of previous month
-  dt_format = "%Y-%m-%d"
-  date = (datetime.today().replace(day=1) - timedelta(days=1)).strftime(dt_format)
-  start_date = datetime.strptime(date, dt_format).replace(day=1).strftime(dt_format)
-  end_date = date  # already the last day of previous month
-
-  DAYS_IN_MONTH = int(date.split("-")[2])
-
-  output_date = datetime.strptime(date, dt_format).strftime("%b_%Y")
+  # Previous full calendar month
+  start_date, end_date, DAYS_IN_MONTH, output_date = previous_month()
+  date = end_date  # last day of previous month
 
   region = 'TH'
 

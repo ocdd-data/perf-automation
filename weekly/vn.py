@@ -1,65 +1,9 @@
 import os
-from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 from dotenv import load_dotenv
 
-import os
-import sys
-
-print("=== DEBUG INFO ===")
-print(f"Current working directory: {os.getcwd()}")
-print(f"Script location: {os.path.abspath(__file__)}")
-
-# Get the script directory
-script_dir = os.path.dirname(os.path.abspath(__file__))
-print(f"Script directory: {script_dir}")
-
-# Go up one level to perf-automation
-parent_dir = os.path.dirname(script_dir)
-print(f"Parent directory (should be perf-automation): {parent_dir}")
-
-# Check if utils exists
-utils_path = os.path.join(parent_dir, 'utils')
-print(f"Utils path: {utils_path}")
-print(f"Utils exists: {os.path.exists(utils_path)}")
-print(f"Utils is directory: {os.path.isdir(utils_path)}")
-
-# List contents of utils
-if os.path.exists(utils_path):
-    print(f"Contents of utils: {os.listdir(utils_path)}")
-
-print(f"\nCurrent sys.path:")
-for p in sys.path:
-    print(f"  {p}")
-
-print("=== END DEBUG ===")
-
-# Now add the correct path
-sys.path.insert(0, parent_dir)
-
-# Try to import
-try:
-    from utils.helpers import Query, Redash
-    from utils.slack import SlackBot
-    print("SUCCESS: Imported utils module!")
-except ImportError as e:
-    print(f"ERROR: {e}")
-    print("Trying alternative import...")
-    
-    # Try direct import
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("helpers", os.path.join(utils_path, "helpers.py"))
-    if spec:
-        helpers = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(helpers)
-        Query = helpers.Query
-        Redash = helpers.Redash
-        print("SUCCESS: Imported helpers directly!")
-    else:
-        print("FAILED: Could not import helpers.py")
-        sys.exit(1)
-
+from utils.dates import previous_week_start
 from utils.helpers import Query, Redash
 from utils.slack import SlackBot
 
@@ -68,7 +12,7 @@ def process_city_data(redash, start_date, city):
     """Process data for a specific city"""
     
     # Run queries with city parameter
-    queries = [[
+    queries = [
         Query(4607, params={"week_start_date": start_date, "city": city}),
         Query(4611, params={"week_start_date": start_date, "city": city}),
         Query(4612, params={"week_start_date": start_date, "city": city}),
@@ -78,10 +22,9 @@ def process_city_data(redash, start_date, city):
         Query(4616, params={"week_start_date": start_date, "city": city}),
         Query(4617, params={"week_start_date": start_date, "city": city}),
         Query(5212, params={"week_start_date": start_date, "city": city}),
-    ]]
+    ]
 
-    for query_list in queries:
-        redash.run_queries(query_list)
+    redash.run_queries(queries)
 
     # Fetch results
     df1 = redash.get_result(4607) # VN - Completed trips
@@ -239,12 +182,7 @@ def main():
 
     redash = Redash(key=os.getenv("REDASH_API_KEY"), base_url=os.getenv("REDASH_BASE_URL"))
 
-    dt_format = "%Y-%m-%d"
-
-    local_now = datetime.now(timezone.utc) + timedelta(hours=7)
-    start_date = (local_now - timedelta(days=local_now.weekday() + 7)).strftime(dt_format)
-
-    output_date = datetime.strptime(start_date, dt_format).strftime("%d_%b_%Y")
+    start_date, output_date = previous_week_start(7)
 
     # Process data for each city
     cities = ["ALL", "HCM", "HAN"]

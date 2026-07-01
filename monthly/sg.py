@@ -1,10 +1,9 @@
-import calendar
 import os
-from datetime import datetime, timedelta
 
 import pandas as pd
 from dotenv import load_dotenv
 
+from utils.dates import previous_month
 from utils.helpers import Query, Redash
 from utils.slack import SlackBot
 
@@ -14,30 +13,13 @@ def main():
 
   redash = Redash(key=os.getenv("REDASH_API_KEY"), base_url=os.getenv("REDASH_BASE_URL"))
 
-  # Get the first day of this month
-  today = datetime.today()
-  first_day_this_month = today.replace(day=1)
-
-  # Go back one day → lands on last day of previous month
-  last_month_date = first_day_this_month - timedelta(days=1)
-
-  YEAR = last_month_date.year
-  MONTH = last_month_date.month
-
-  # Format strings
-  dt_format = "%Y-%m-%d"
-  query_date = datetime(YEAR, MONTH, 1).strftime(dt_format)
-
-  start_date = query_date
-  last_day = calendar.monthrange(YEAR, MONTH)[1]
-  end_date = datetime(YEAR, MONTH, last_day).strftime(dt_format)
-  DAYS_IN_MONTH = last_day
-  output_date = datetime(YEAR, MONTH, 1).strftime("%b_%Y")
+  start_date, end_date, DAYS_IN_MONTH, output_date = previous_month()
+  query_date = start_date
 
   region = 'SG'
   region_id = 1
 
-  queries = [[
+  queries = [
     Query(2183, params={"date": query_date}),
     Query(2184, params={"date": query_date}),
     Query(2187, params={"date": query_date}),
@@ -66,10 +48,9 @@ def main():
     Query(4814, params={"date_range": {"start": start_date, "end": end_date}, "region": region_id}), 
     Query(4819, params={"date_range": {"start": start_date, "end": end_date}, "region": region}),
     Query(5000, params={"date_range": {"start": start_date, "end": end_date}})
-  ]]
+  ]
 
-  for query_list in queries:
-    redash.run_queries(query_list)
+  redash.run_queries(queries)
 
   bq1 = redash.get_result(2187) # active users - rider
   bq2 = redash.get_result(2192) # search and open

@@ -2,9 +2,9 @@ name: NY Monthly Run
 
 on:
   schedule:
-    # 2nd of each month 01:00 UTC = 2nd 09:00 SGT — same clock time as SG monthly
-    # (1st 01:00 UTC / 1st 09:00 SGT), one day later. NY month closes 1st ~04:00–05:00 UTC.
-    - cron: '0 1 2 * *'
+    # 1st of each month 13:00 UTC = 09:00 EDT (NY). NY month closes 1st ~04:00–05:00 UTC,
+    # so this runs ~8h after close. Note: fixed UTC — in EST (winter) 13:00 UTC is 08:00 NY.
+    - cron: '0 13 1 * *'
   workflow_dispatch:        # allows manual triggering from the Actions tab
 
 jobs:
@@ -13,10 +13,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -31,7 +31,6 @@ jobs:
           echo "REDASH_BASE_URL=${{ secrets.REDASH_BASE_URL }}" >> .env
           echo "SLACK_TOKEN=${{ secrets.SLACK_TOKEN }}" >> .env
           echo "SLACK_CHANNEL=${{ secrets.SLACK_CHANNEL }}" >> .env
-          echo "SLACK_CHANNEL_NY=${{ secrets.SLACK_CHANNEL_NY }}" >> .env
 
       - name: Run NY Perf Report Script
         run: python -m monthly.ny

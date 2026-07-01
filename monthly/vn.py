@@ -1,12 +1,9 @@
 import os
-import sys
-from datetime import datetime, timedelta
+
 import pandas as pd
 from dotenv import load_dotenv
 
-# Fix the import path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+from utils.dates import previous_month
 from utils.helpers import Query, Redash
 from utils.slack import SlackBot
 
@@ -44,10 +41,7 @@ def process_city_data(redash, start_date, end_date, DAYS_IN_MONTH, output_date, 
     if city == "ALL":
         common_queries.append(Query(4579, params={"date_range": {"start": start_date, "end": end_date}}))
     
-    queries = [common_queries]
-    
-    for query_list in queries:
-        redash.run_queries(query_list)
+    redash.run_queries(common_queries)
 
     # Fetch results
     bq1 = redash.get_result(4565) # active riders
@@ -327,13 +321,7 @@ def main():
 
     redash = Redash(key=os.getenv("REDASH_API_KEY"), base_url=os.getenv("REDASH_BASE_URL"))
 
-    dt_format = "%Y-%m-%d"
-    start_date = (datetime.today().replace(day=1) - timedelta(days=1)).replace(day=1).strftime(dt_format)
-    end_date = (datetime.today().replace(day=1) - timedelta(days=1)).strftime(dt_format)
-
-    DAYS_IN_MONTH = int(end_date.split("-")[2])
-
-    output_date = datetime.strptime(start_date, dt_format).strftime("%b_%Y")
+    start_date, end_date, DAYS_IN_MONTH, output_date = previous_month()
     output_file = f"VN_{output_date}.xlsx"
 
     # Create an Excel writer

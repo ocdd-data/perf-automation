@@ -24,7 +24,8 @@ def main():
     Query(3001, params={'date': start_date}),
     Query(3004, params={'date': start_date}),
     Query(1581),
-    Query(7644, params={'date': start_date}),  # NY - Total trips and GMV
+    Query(7644, params={'date': start_date}),
+    Query(7680, params={'date': start_date}),
   ]]
 
   for query_list in queries:
@@ -36,6 +37,7 @@ def main():
   df4 = redash.get_result(3004)  # KH - T1
   df5 = redash.get_result(1581)  # KH - T1 signup
   df6 = redash.get_result(7644)  # NY - Total trips and GMV
+  df7 = redash.get_result(7680)  # NY - Trips by product
 
   # Combine SEA GMV summary with NY GMV summary
   gmv_summary_df = pd.concat([df3, df6], ignore_index=True)
@@ -99,6 +101,9 @@ def main():
   t1 = df4.merge(df5_trimmed, left_on='trip_month', right_on='sign_up', how='left')
   t1['trip_month'] = t1['trip_month'].dt.strftime('%Y-%m-%d')
   t1 = t1.drop(columns=['sign_up'])
+  
+  ny_ride = df7[df7['product_type'] == 'NY Ride'].copy()
+  ny_saver = df7[df7['product_type'] == 'NY Saver'].copy()
 
   # Save to Excel
   output_file = f'Monthly_Report_S_{output_date}.xlsx'
@@ -117,6 +122,8 @@ def main():
     th_car.to_excel(writer, sheet_name='TH Car', index=False)
     th_bike.to_excel(writer, sheet_name='TH Bike', index=False)
     t1.to_excel(writer, sheet_name='KH T1', index=False)
+    ny_ride.to_excel(writer, sheet_name='NY Ride', index=False)
+    ny_saver.to_excel(writer, sheet_name='NY Saver', index=False)
 
   slack = SlackBot()
   slack.uploadFile(output_file, 
