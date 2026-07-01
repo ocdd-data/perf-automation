@@ -1,149 +1,152 @@
 """
 NY Weekly Report — automated weekly snapshot for the New York region.
 
-Same shape as weekly/vn.py: batch the Redash queries for the most recent COMPLETE week,
-assemble one weekly column, write an .xlsx, and upload it to Slack. The layout (metric
-order, section grouping, blank rows) mirrors the NY Google Sheet so the column can be pasted
-straight in. Derived metrics are written as Excel FORMULAS (not pre-computed values) so they
-stay transparent and recompute if a base number is edited. Cross-week metrics that depend on
-the previous week (% Growth, % Resurrect, % Churn) are left blank — those formulas live in
-the master sheet, which has the prior columns.
+Batches the NY Redash queries for the most recent COMPLETE Mon–Sun week, assembles one
+weekly column, writes an .xlsx laid out like the NY sheet, and uploads to Slack.
 
-NY is USD-native, single market (no car/bike split), so the modal blocks from VN drop out.
+Product segmentation: the trips (7548), cancellation (7596) and fare (7556) queries now
+return one row PER product segment — 'Overall', 'Saver', 'Others'. The Operational block and
+the Average Rider Fare / Average Driver Earn rows are shown per segment. Everything else
+(Driver, Rider, Promo, Platform Fee, Fees) stays at the Overall level, since those queries
+are not segmented — they read the 'Overall' totals.
 
-Run:  python weekly/ny.py
-Env:  REDASH_API_KEY, REDASH_BASE_URL, SLACK_TOKEN, SLACK_CHANNEL_NY (or SLACK_CHANNEL)
+Backfill a past week:  python weekly/ny.py 2026-06-08   (defaults to last complete week)
+Env: REDASH_API_KEY, REDASH_BASE_URL, SLACK_TOKEN, SLACK_CHANNEL_NY (or SLACK_CHANNEL)
 """
 import os
-import re
 import sys
 from datetime import datetime, timedelta
 
 import pandas as pd
 from dotenv import load_dotenv
 
-try:                                   # stdlib on 3.9+; tzdata is in requirements
+try:
     from zoneinfo import ZoneInfo
     NY_TZ = ZoneInfo("America/New_York")
-except Exception:                      # pragma: no cover - fallback if zoneinfo unavailable
+except Exception:                      # pragma: no cover
     NY_TZ = None
 
-# Match weekly/vn.py: make `utils` importable when run from anywhere.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.helpers import Query, Redash  # noqa: E402
 from utils.slack import SlackBot          # noqa: E402
 
-# Redash query IDs (logical name -> id).
+# Logical name -> Redash query id
 QIDS = {
-    "trips":   7548,   # NY - Completed Trip  (bookings, completed, rates, weekly riders/drivers)
-    "wau":     7552,   # NY - Active Rider Weekly  (GA4 WAU)
-    "driver":  7553,   # NY - Driver FT R C  (retained / first / resurrect / churn)
-    "rider":   7554,   # NY - Rider FT R C
-    "cancel":  7596,   # NY - Cancellation Rates
-    "online":  7555,   # NY - Online Driver
-    "fare":    7556,   # NY - Average Fare
-    "promo":   7557,   # NY - Promotion Spending Weekly
-    "fee":     7558,   # NY - Platform Fee Weekly
-    "pm":      7559,   # NY - Payment Method Weekly
-    "fee_breakdown": 7645,  # NY - tips + statutory/regulatory fee totals
+    "trips":   7548,   # per-segment: bookings, completed, rates, weekly riders/drivers
+    "wau":     7552,   # GA4 rider WAU
+    "driver":  7553,   # retained / first / resurrect / churn
+    "rider":   7554,
+    "cancel":  7596,   # per-segment cancel counts + rates
+    "online":  7555,   # avg online drivers
+    "fare":    7556,   # per-segment avg/total rider pay + driver earn
+    "promo":   7557,   # discount trips/spend
+    "fee":     7558,   # platform (system) fee
+    "pm":      7559,   # payment method (cash/card)
+    "fee_breakdown": 7645,  # tips + statutory/regulatory fee totals
 }
 
-# Rate columns arrive from SQL already multiplied by 100 (e.g. 95.32). Store as fractions so
-# Excel's percent format renders them correctly.
-RATE_KEYS = {"complete_rate", "expire_rate", "rider_cancel_rate",
-             "rider_cancel_after_matched_rate", "driver_cancel_rate",
-             "retained_driver_pct", "retained_rider_pct"}
+# Product segments: (data value from SQL, display label on the sheet)
+SEGMENTS = [("Overall", "Overall"), ("Saver", "Saver"), ("Others", "All other products")]
 
-# Section fills (approximate the colour blocks in the sheet).
-SECTION_FILL = {
-    "Operational": "#DDEBF7",   # blue
-    "Driver":      "#FCE4D6",   # orange
-    "Rider":       "#E2EFDA",   # green
-    "Fare / Promo / Fees": "#EDE7F6",  # purple
-}
-
-# ---------------------------------------------------------------------------
-# Sheet layout — one entry per row, in the exact order of the screenshot.
-#   ("val",   section, label, value_key, numfmt)  -> number (from a query OR computed in Python)
-#   ("blankval", section, label, None, numfmt)    -> label present, value blank (cross-week)
-#   ("blank", None, None, None, None)             -> empty separator row
-# numfmt: int | dec | pct | money
-#
-# Derived rows are COMPUTED IN PYTHON (see compute_derived) and written as plain numbers, not
-# Excel formulas. xlsxwriter caches a formula result of 0 and relies on the viewer to recalc,
-# which Slack/Sheets previews don't — hence the zeros. Values are also safe to paste into the
-# master sheet (formulas would shift their relative refs on paste).
-# ---------------------------------------------------------------------------
-SPEC = [
-    ("val", "Operational", "Bookings", "bookings", "int"),
-    ("val", "Operational", "Unique Bookings", "unique_bookings", "int"),
-    ("val", "Operational", "Completed Trips", "completed", "int"),
-    ("val", "Operational", "Complete Rate", "complete_rate", "pct"),
-    ("val", "Operational", "Expire Rate", "expire_rate", "pct"),
-    ("val", "Operational", "Avg Daily Completed", "daily_completed", "int"),
-    ("blankval", "Operational", "% Growth", None, "pct"),
-    ("val", "Operational", "Avg Completed Trip Per Rider", "avg_trip_per_rider", "dec"),
-    ("val", "Operational", "Avg Completed Trip Per Driver", "avg_trip_per_driver", "dec"),
-    ("blank", None, None, None, None),
-    ("val", "Operational", "Rider Cancel Rate", "rider_cancel_rate", "pct"),
-    ("val", "Operational", "Rider Cancel After Match Rate", "rider_cancel_after_matched_rate", "pct"),
-    ("val", "Operational", "Driver Cancel Rate", "driver_cancel_rate", "pct"),
-
-    ("val", "Driver", "Retained Driver Pct", "retained_driver_pct", "pct"),
-    ("val", "Driver", "Unique Completed Drivers", "driver_weekly_complete", "int"),
-    ("val", "Driver", "Daily Average Online Driver", "avg_online_drivers", "int"),
-    ("val", "Driver", "Daily Average Completed Driver", "daily_avg_completed_drivers", "int"),
-    ("val", "Driver", "CD / OD", "cd_od", "pct"),
-    ("val", "Driver", "Driver Weekly Completed", "driver_weekly_complete", "int"),
-    ("blank", None, None, None, None),
-    ("val", "Driver", "New Driver Activated", "driver_first", "int"),
-    ("val", "Driver", "Resurrected Driver", "driver_resurrect", "int"),
-    ("blankval", "Driver", "% Resurrect", None, "pct"),
-    ("val", "Driver", "Churn Driver", "driver_churn", "int"),
-    ("blankval", "Driver", "% Churn", None, "pct"),
-    ("val", "Driver", "Net New Driver", "net_new_driver", "int"),
-
-    ("val", "Rider", "Retained Rider Pct", "retained_rider_pct", "pct"),
-    ("val", "Rider", "Rider WAU", "wau", "int"),
-    ("val", "Rider", "Unique Completed Riders", "rider_weekly_complete", "int"),
-    ("val", "Rider", "Completed Riders / WAU", "completed_riders_per_wau", "pct"),
-    ("blank", None, None, None, None),
-    ("val", "Rider", "New Rider Activated", "rider_first", "int"),
-    ("val", "Rider", "Resurrected Rider", "rider_resurrect", "int"),
-    ("blankval", "Rider", "% Resurrect", None, "pct"),
-    ("val", "Rider", "Churn Rider", "rider_churn", "int"),
-    ("blankval", "Rider", "% Churn", None, "pct"),
-    ("val", "Rider", "Net New Rider", "net_new_rider", "int"),
-    ("val", "Rider", "R:D Ratio", "rd_ratio", "dec4"),
-    ("blank", None, None, None, None),
-
-    ("val", "Fare / Promo / Fees", "Average Rider Fare", "avg_rider_fare", "money"),
-    ("val", "Fare / Promo / Fees", "Average Driver Earn", "avg_driver_earn", "money"),
-    ("val", "Fare / Promo / Fees", "Promo Spend", "discount", "money"),
-    ("val", "Fare / Promo / Fees", "Promotion Trips", "discount_trips", "int"),
-    ("val", "Fare / Promo / Fees", "Non Promotion Trips", "non_promo_trips", "int"),
-    ("val", "Fare / Promo / Fees", "Promotion / Completed", "promo_over_completed", "pct"),
-    ("val", "Fare / Promo / Fees", "Average Promotion Value", "average_discount", "money"),
-    ("val", "Fare / Promo / Fees", "Promo per completed ride", "promo_per_ride", "money"),
-    ("val", "Fare / Promo / Fees", "Promo per completed rider", "promo_per_rider", "money"),
-    ("val", "Fare / Promo / Fees", "Promo per completed trip / Average Fare", "promo_over_fare", "pct"),
-    ("val", "Fare / Promo / Fees", "Platform Fee", "total_system_fee", "money"),
-    ("val", "Fare / Promo / Fees", "Platform Fee per Completed Ride", "platform_fee_per_ride", "money"),
-    ("blank", None, None, None, None),
-    ("val", "Fare / Promo / Fees", "Total Tips", "total_tips", "money"),
-    ("val", "Fare / Promo / Fees", "Total Stat Fees", "total_stat_fees", "money"),
-    ("val", "Fare / Promo / Fees", "Total Black Car Fund", "total_black_car_fund", "money"),
-    ("val", "Fare / Promo / Fees", "Total Congestion Fee", "total_congestion_fee", "money"),
-    ("val", "Fare / Promo / Fees", "Total Congestion Surcharge", "total_congestion_surcharge", "money"),
-    ("val", "Fare / Promo / Fees", "Total NY Sales Tax", "total_ny_sales_tax", "money"),
+# Per-segment Operational metrics: (label, value_key_suffix|None, numfmt, kind)
+OP_METRICS = [
+    ("Bookings", "bookings", "int", "val"),
+    ("Unique Bookings", "unique_bookings", "int", "val"),
+    ("Completed Trips", "completed", "int", "val"),
+    ("Complete Rate", "complete_rate", "pct", "val"),
+    ("Expire Rate", "expire_rate", "pct", "val"),
+    ("Avg Daily Completed", "daily_completed", "int", "val"),
+    ("% Growth", None, "pct", "blankval"),
+    ("Avg Completed Trip Per Rider", "avg_trip_per_rider", "dec", "val"),
+    ("Avg Completed Trip Per Driver", "avg_trip_per_driver", "dec", "val"),
+    ("Rider Cancel Rate", "rider_cancel_rate", "pct", "val"),
+    ("Rider Cancel After Match Rate", "rider_cancel_after_matched_rate", "pct", "val"),
+    ("Driver Cancel Rate", "driver_cancel_rate", "pct", "val"),
 ]
 
+# ---------------------------------------------------------------------------
+# Sheet layout — (kind, section, segment, label, value_key, numfmt).
+#   segment is the sub-label in column B (only used for the Operational block).
+#   Derived rows are computed in Python (compute_derived) and written as numbers.
+# ---------------------------------------------------------------------------
+SPEC = []
+for _seg, _disp in SEGMENTS:                       # Operational block, per segment
+    for _label, _suf, _fmt, _kind in OP_METRICS:
+        _key = f"{_seg}_{_suf}" if _suf else None
+        SPEC.append((_kind, "Operational", _disp, _label, _key, _fmt))
+
+SPEC += [
+    ("val", "Driver", None, "Retained Driver Pct", "retained_driver_pct", "pct"),
+    ("val", "Driver", None, "Unique Completed Drivers", "driver_weekly_complete", "int"),
+    ("val", "Driver", None, "Daily Average Online Driver", "avg_online_drivers", "int"),
+    ("val", "Driver", None, "Daily Average Completed Driver", "daily_avg_completed_drivers", "int"),
+    ("val", "Driver", None, "CD / OD", "cd_od", "pct"),
+    ("val", "Driver", None, "Driver Weekly Completed", "driver_weekly_complete", "int"),
+    ("blank", None, None, None, None, None),
+    ("val", "Driver", None, "New Driver Activated", "driver_first", "int"),
+    ("val", "Driver", None, "Resurrected Driver", "driver_resurrect", "int"),
+    ("blankval", "Driver", None, "% Resurrect", None, "pct"),
+    ("val", "Driver", None, "Churn Driver", "driver_churn", "int"),
+    ("blankval", "Driver", None, "% Churn", None, "pct"),
+    ("val", "Driver", None, "Net New Driver", "net_new_driver", "int"),
+
+    ("val", "Rider", None, "Retained Rider Pct", "retained_rider_pct", "pct"),
+    ("val", "Rider", None, "Rider WAU", "wau", "int"),
+    ("val", "Rider", None, "Unique Completed Riders", "rider_weekly_complete", "int"),
+    ("val", "Rider", None, "Completed Riders / WAU", "completed_riders_per_wau", "pct"),
+    ("blank", None, None, None, None, None),
+    ("val", "Rider", None, "New Rider Activated", "rider_first", "int"),
+    ("val", "Rider", None, "Resurrected Rider", "rider_resurrect", "int"),
+    ("blankval", "Rider", None, "% Resurrect", None, "pct"),
+    ("val", "Rider", None, "Churn Rider", "rider_churn", "int"),
+    ("blankval", "Rider", None, "% Churn", None, "pct"),
+    ("val", "Rider", None, "Net New Rider", "net_new_rider", "int"),
+    ("val", "Rider", None, "R:D Ratio", "rd_ratio", "dec4"),
+    ("blank", None, None, None, None, None),
+
+    # Average rider fare / driver earn per segment (segment baked into the label).
+    ("val", "Fare / Promo / Fees", None, "Average Rider Fare (Overall)", "Overall_avg_rider_fare", "money"),
+    ("val", "Fare / Promo / Fees", None, "Average Driver Earn (Overall)", "Overall_avg_driver_earn", "money"),
+    ("val", "Fare / Promo / Fees", None, "Average Rider Fare (Saver)", "Saver_avg_rider_fare", "money"),
+    ("val", "Fare / Promo / Fees", None, "Average Driver Earn (Saver)", "Saver_avg_driver_earn", "money"),
+    ("val", "Fare / Promo / Fees", None, "Average Rider Fare (All other products)", "Others_avg_rider_fare", "money"),
+    ("val", "Fare / Promo / Fees", None, "Average Driver Earn (All other products)", "Others_avg_driver_earn", "money"),
+    ("val", "Fare / Promo / Fees", None, "Promo Spend", "discount", "money"),
+    ("val", "Fare / Promo / Fees", None, "Promotion Trips", "discount_trips", "int"),
+    ("val", "Fare / Promo / Fees", None, "Non Promotion Trips", "non_promo_trips", "int"),
+    ("val", "Fare / Promo / Fees", None, "Promotion / Completed", "promo_over_completed", "pct"),
+    ("val", "Fare / Promo / Fees", None, "Average Promotion Value", "average_discount", "money"),
+    ("val", "Fare / Promo / Fees", None, "Promo per completed ride", "promo_per_ride", "money"),
+    ("val", "Fare / Promo / Fees", None, "Promo per completed rider", "promo_per_rider", "money"),
+    ("val", "Fare / Promo / Fees", None, "Promo per completed trip / Average Fare", "promo_over_fare", "pct"),
+    ("val", "Fare / Promo / Fees", None, "Platform Fee", "total_system_fee", "money"),
+    ("val", "Fare / Promo / Fees", None, "Platform Fee per Completed Ride", "platform_fee_per_ride", "money"),
+    ("blank", None, None, None, None, None),
+    ("val", "Fare / Promo / Fees", None, "Total Tips", "total_tips", "money"),
+    ("val", "Fare / Promo / Fees", None, "Total Stat Fees", "total_stat_fees", "money"),
+    ("val", "Fare / Promo / Fees", None, "Total Black Car Fund", "total_black_car_fund", "money"),
+    ("val", "Fare / Promo / Fees", None, "Total Congestion Fee", "total_congestion_fee", "money"),
+    ("val", "Fare / Promo / Fees", None, "Total Congestion Surcharge", "total_congestion_surcharge", "money"),
+    ("val", "Fare / Promo / Fees", None, "Total NY Sales Tax", "total_ny_sales_tax", "money"),
+]
+
+SECTION_FILL = {
+    "Operational": "#DDEBF7",
+    "Driver": "#FCE4D6",
+    "Rider": "#E2EFDA",
+    "Fare / Promo / Fees": "#EDE7F6",
+}
+
+# Per-segment SQL rate columns arrive x100 — store as fractions for Excel's percent format.
+SEG_RATE_KEYS = ("complete_rate", "expire_rate", "rider_cancel_rate",
+                 "rider_cancel_after_matched_rate", "driver_cancel_rate")
+
 
 # ---------------------------------------------------------------------------
-# Pull + extract
+# Helpers
 # ---------------------------------------------------------------------------
 def cell(df, col):
-    """First-row value of a column, tolerant of empty results / missing columns / NaN."""
+    """First-row value of a single-row result, tolerant of empty/missing/NaN."""
     try:
         if df is None or len(df) == 0 or col not in df.columns:
             return None
@@ -153,50 +156,103 @@ def cell(df, col):
         return None
 
 
+def _rv(row, col):
+    """Value from a segment row (a pandas Series), tolerant of missing/NaN."""
+    try:
+        if row is None or col not in row:
+            return None
+        x = row[col]
+        return None if pd.isna(x) else x
+    except Exception:
+        return None
+
+
+def _seg_rows(df, col="product_segment"):
+    """Index a multi-row segmented result by its product_segment value."""
+    out = {}
+    if df is None or len(df) == 0 or col not in df.columns:
+        return out
+    for _, r in df.iterrows():
+        out[r[col]] = r
+    return out
+
+
+def _num(x):
+    try:
+        if x is None or (isinstance(x, float) and pd.isna(x)):
+            return None
+        return float(x)
+    except (ValueError, TypeError):
+        return None
+
+
+def _safe_div(a, b):
+    a, b = _num(a), _num(b)
+    if a is None or not b:
+        return None
+    return a / b
+
+
+# ---------------------------------------------------------------------------
+# Extract + derive
+# ---------------------------------------------------------------------------
 def extract_values(res):
-    """Flatten the query DataFrames into the {value_key: number} dict the layout references."""
-    t, c = res["trips"], res["cancel"]
-    d, r = res["driver"], res["rider"]
-    v = {
-        "bookings": cell(t, "total_bookings"),
-        "unique_bookings": cell(t, "unique_bookings"),
-        "completed": cell(t, "total_completed_trip"),
-        "complete_rate": cell(t, "complete_rate"),
-        "expire_rate": cell(t, "expire_rate"),
-        "daily_completed": cell(t, "daily_completed_trip"),
-        "driver_weekly_complete": cell(t, "driver_weekly_complete"),
-        "rider_weekly_complete": cell(t, "rider_weekly_complete"),
-        "daily_avg_completed_drivers": cell(t, "daily_avg_completed_drivers"),
+    v = {}
+    tseg = _seg_rows(res["trips"])
+    cseg = _seg_rows(res["cancel"])
+    fseg = _seg_rows(res["fare"])
 
-        "rider_cancel_rate": cell(c, "rider_cancel_rate"),
-        "rider_cancel_after_matched_rate": cell(c, "rider_cancel_after_matched_rate"),
-        "driver_cancel_rate": cell(c, "driver_cancel_rate"),
+    for seg, _disp in SEGMENTS:
+        t, c, f = tseg.get(seg), cseg.get(seg), fseg.get(seg)
+        v[f"{seg}_bookings"] = _rv(t, "total_bookings")
+        v[f"{seg}_unique_bookings"] = _rv(t, "unique_bookings")
+        v[f"{seg}_completed"] = _rv(t, "total_completed_trip")
+        v[f"{seg}_complete_rate"] = _rv(t, "complete_rate")
+        v[f"{seg}_expire_rate"] = _rv(t, "expire_rate")
+        v[f"{seg}_daily_completed"] = _rv(t, "daily_completed_trip")
+        v[f"{seg}_driver_weekly_complete"] = _rv(t, "driver_weekly_complete")
+        v[f"{seg}_rider_weekly_complete"] = _rv(t, "rider_weekly_complete")
+        v[f"{seg}_daily_avg_completed_drivers"] = _rv(t, "daily_avg_completed_drivers")
+        v[f"{seg}_rider_cancel_rate"] = _rv(c, "rider_cancel_rate")
+        v[f"{seg}_rider_cancel_after_matched_rate"] = _rv(c, "rider_cancel_after_matched_rate")
+        v[f"{seg}_driver_cancel_rate"] = _rv(c, "driver_cancel_rate")
+        v[f"{seg}_avg_rider_fare"] = _rv(f, "avg_rider_pay")
+        v[f"{seg}_avg_driver_earn"] = _rv(f, "avg_driver_earn")
+        for rk in SEG_RATE_KEYS:                       # x100 -> fraction
+            k = f"{seg}_{rk}"
+            if v.get(k) is not None:
+                v[k] = float(v[k]) / 100.0
 
-        "retained_driver_pct": cell(d, "retained_driver_pct"),
-        "driver_first": cell(d, "first_timers"),
-        "driver_resurrect": cell(d, "resurrect"),
-        "driver_churn": cell(d, "churn"),
+    # Overall aliases feed the non-segmented Driver / Rider / Promo / Fee rows.
+    v["completed"] = v.get("Overall_completed")
+    v["daily_completed"] = v.get("Overall_daily_completed")
+    v["rider_weekly_complete"] = v.get("Overall_rider_weekly_complete")
+    v["driver_weekly_complete"] = v.get("Overall_driver_weekly_complete")
+    v["daily_avg_completed_drivers"] = v.get("Overall_daily_avg_completed_drivers")
 
-        "retained_rider_pct": cell(r, "retained_rider_pct"),
-        "rider_first": cell(r, "first_timers"),
-        "rider_resurrect": cell(r, "resurrect"),
-        "rider_churn": cell(r, "churn"),
+    d, ri = res["driver"], res["rider"]
+    v["retained_driver_pct"] = cell(d, "retained_driver_pct")
+    v["driver_first"] = cell(d, "first_timers")
+    v["driver_resurrect"] = cell(d, "resurrect")
+    v["driver_churn"] = cell(d, "churn")
+    v["retained_rider_pct"] = cell(ri, "retained_rider_pct")
+    v["rider_first"] = cell(ri, "first_timers")
+    v["rider_resurrect"] = cell(ri, "resurrect")
+    v["rider_churn"] = cell(ri, "churn")
+    for rk in ("retained_driver_pct", "retained_rider_pct"):    # x100 -> fraction
+        if v.get(rk) is not None:
+            v[rk] = float(v[rk]) / 100.0
 
-        "avg_online_drivers": cell(res["online"], "avg_online_drivers"),
-        "wau": cell(res["wau"], "active_users"),
-        "avg_rider_fare": cell(res["fare"], "avg_rider_pay"),
-        "avg_driver_earn": cell(res["fare"], "avg_driver_earn"),
+    v["avg_online_drivers"] = cell(res["online"], "avg_online_drivers")
+    v["wau"] = cell(res["wau"], "active_users")
+    v["discount_trips"] = cell(res["promo"], "discount_trips")
+    v["discount"] = cell(res["promo"], "discount")
+    v["average_discount"] = cell(res["promo"], "average_discount")
+    v["total_system_fee"] = cell(res["fee"], "total_system_fee")
 
-        "discount_trips": cell(res["promo"], "discount_trips"),
-        "discount": cell(res["promo"], "discount"),
-        "average_discount": cell(res["promo"], "average_discount"),
-
-        "total_system_fee": cell(res["fee"], "total_system_fee"),
-    }
-    # Fee breakdown (query 7645). "Total Stat Fees" = base etc_fee + additional etc fees (type 999).
+    # Fee breakdown (7645). "Total Stat Fees" = base etc_fee + additional etc fees (type 999).
     fb = res["fee_breakdown"]
-    etc = cell(fb, "total_etc_fee")
-    add_etc = cell(fb, "total_additional_etc_fee")
+    etc, add_etc = cell(fb, "total_etc_fee"), cell(fb, "total_additional_etc_fee")
     v["total_tips"] = cell(fb, "total_tip_amount")
     v["total_stat_fees"] = (
         None if etc is None and add_etc is None
@@ -206,45 +262,30 @@ def extract_values(res):
     v["total_congestion_fee"] = cell(fb, "total_mta_congestion_fee")
     v["total_congestion_surcharge"] = cell(fb, "total_nys_congestion_surcharge")
     v["total_ny_sales_tax"] = cell(fb, "total_ny_sales_tax")
-
-    # Convert SQL percent values (x100) to fractions for Excel's percent format.
-    for k in RATE_KEYS:
-        if v.get(k) is not None:
-            v[k] = float(v[k]) / 100.0
     return v
 
 
-def _safe_div(a, b):
-    a, b = _num(a), _num(b)
-    if a is None or not b:        # b None or 0
-        return None
-    return a / b
-
-
 def compute_derived(v):
-    """Derived metrics computed in Python so the sheet shows real numbers everywhere.
-
-    Mirrors the VN derivations. Missing/empty bases yield blanks rather than zeros, so a week
-    with no data doesn't masquerade as a real 0.
-    """
-    z = lambda k: (_num(v.get(k)) or 0)         # count, treating missing as 0
+    z = lambda k: (_num(v.get(k)) or 0)
+    d = {}
+    # per-segment operational derived
+    for seg, _disp in SEGMENTS:
+        d[f"{seg}_avg_trip_per_rider"] = _safe_div(v.get(f"{seg}_completed"), v.get(f"{seg}_rider_weekly_complete"))
+        d[f"{seg}_avg_trip_per_driver"] = _safe_div(v.get(f"{seg}_daily_completed"), v.get(f"{seg}_daily_avg_completed_drivers"))
+    # driver / rider (Overall-level)
+    d["cd_od"] = _safe_div(v.get("daily_avg_completed_drivers"), v.get("avg_online_drivers"))
+    d["net_new_driver"] = z("driver_first") + z("driver_resurrect") - z("driver_churn")
+    d["net_new_rider"] = z("rider_first") + z("rider_resurrect") - z("rider_churn")
+    d["completed_riders_per_wau"] = _safe_div(v.get("rider_weekly_complete"), v.get("wau"))
+    d["rd_ratio"] = _safe_div(v.get("rider_weekly_complete"), v.get("driver_weekly_complete"))
+    # promo / platform (Overall-level)
     completed = _num(v.get("completed"))
-    d = {
-        "avg_trip_per_rider": _safe_div(v.get("completed"), v.get("rider_weekly_complete")),
-        "avg_trip_per_driver": _safe_div(v.get("daily_completed"), v.get("daily_avg_completed_drivers")),
-        "cd_od": _safe_div(v.get("daily_avg_completed_drivers"), v.get("avg_online_drivers")),
-        "net_new_driver": z("driver_first") + z("driver_resurrect") - z("driver_churn"),
-        "net_new_rider": z("rider_first") + z("rider_resurrect") - z("rider_churn"),
-        "completed_riders_per_wau": _safe_div(v.get("rider_weekly_complete"), v.get("wau")),
-        "non_promo_trips": None if completed is None else completed - z("discount_trips"),
-        "promo_over_completed": _safe_div(v.get("discount_trips"), v.get("completed")),
-        "promo_per_ride": _safe_div(v.get("discount"), v.get("completed")),
-        "promo_per_rider": _safe_div(v.get("discount"), v.get("rider_weekly_complete")),
-        "rd_ratio": _safe_div(v.get("rider_weekly_complete"), v.get("driver_weekly_complete")),
-        "platform_fee_per_ride": _safe_div(v.get("total_system_fee"), v.get("completed")),
-    }
-    # promo-per-ride relative to rider fare (the rider-paid base, formerly "average fare")
-    d["promo_over_fare"] = _safe_div(d["promo_per_ride"], v.get("avg_rider_fare"))
+    d["non_promo_trips"] = None if completed is None else completed - z("discount_trips")
+    d["promo_over_completed"] = _safe_div(v.get("discount_trips"), v.get("completed"))
+    d["promo_per_ride"] = _safe_div(v.get("discount"), v.get("completed"))
+    d["promo_per_rider"] = _safe_div(v.get("discount"), v.get("rider_weekly_complete"))
+    d["platform_fee_per_ride"] = _safe_div(v.get("total_system_fee"), v.get("completed"))
+    d["promo_over_fare"] = _safe_div(d["promo_per_ride"], v.get("Overall_avg_rider_fare"))
     return d
 
 
@@ -259,18 +300,9 @@ def extract_payment(res):
 
 
 # ---------------------------------------------------------------------------
-# Workbook (pure: no Redash dependency, so it can be unit-tested with stub data)
+# Workbook (A=section, B=segment, C=metric, D=value)
 # ---------------------------------------------------------------------------
 NUMFMT = {"int": "#,##0", "dec": "#,##0.00", "dec4": "#,##0.0000", "pct": "0.00%", "money": "$#,##0.00"}
-
-
-def _num(x):
-    try:
-        if x is None or (isinstance(x, float) and pd.isna(x)):
-            return None
-        return float(x)
-    except (ValueError, TypeError):
-        return None
 
 
 def build_workbook(path, start_date, values, payment):
@@ -278,9 +310,10 @@ def build_workbook(path, start_date, values, payment):
 
     wb = xlsxwriter.Workbook(path, {"nan_inf_to_errors": True})
     ws = wb.add_worksheet("Weekly Report")
-    ws.set_column(0, 0, 14)
-    ws.set_column(1, 1, 32)
-    ws.set_column(2, 2, 16)
+    ws.set_column(0, 0, 12)
+    ws.set_column(1, 1, 18)
+    ws.set_column(2, 2, 34)
+    ws.set_column(3, 3, 14)
 
     fmt_cache = {}
 
@@ -303,52 +336,58 @@ def build_workbook(path, start_date, values, payment):
             fmt_cache[key] = wb.add_format(d)
         return fmt_cache[key]
 
-    # ---- header ----
-    ws.write(0, 1, "NY Weekly Report", fmt(bold=True, border=0))
-    ws.write(1, 1, "Monday Start Date", fmt(bold=True, border=0))
-    ws.write(1, 2, start_date, fmt(bold=True, border=0))
-    HDR = 2
-    ws.write(HDR, 0, "Section", fmt(bold=True, bg="#1F2937", align="center"))
-    ws.write(HDR, 1, "Metric", fmt(bold=True, bg="#1F2937", align="center"))
-    ws.write(HDR, 2, start_date, fmt(bold=True, bg="#1F2937", align="center"))
-    # white font on the dark header
     hdr_fmt = wb.add_format({"bold": True, "bg_color": "#1F2937", "font_color": "white",
                              "align": "center", "border": 1})
-    for col, txt in ((0, "Section"), (1, "Metric"), (2, start_date)):
+    ws.write(0, 2, "NY Weekly Report", wb.add_format({"bold": True, "font_size": 14}))
+    ws.write(1, 2, "Monday Start Date", wb.add_format({"bold": True}))
+    ws.write(1, 3, start_date, wb.add_format({"bold": True}))
+    HDR = 2
+    for col, txt in ((0, "Section"), (1, "Segment"), (2, "Metric"), (3, start_date)):
         ws.write(HDR, col, txt, hdr_fmt)
+    DATA = HDR + 1
 
-    DATA = HDR + 1  # first metric row (0-indexed)
-
-    # Pass 1: record per-section row ranges (for the merged vertical labels).
-    sec_range = {}
-    for i, (kind, section, label, _payload, _nf) in enumerate(SPEC):
+    # Pass 1: row ranges for the merged section (A) and segment (B) labels.
+    sec_range, seg_range = {}, {}
+    for i, (kind, section, segment, label, key, nf) in enumerate(SPEC):
         r0 = DATA + i
         if section:
             lo, hi = sec_range.get(section, (r0, r0))
             sec_range[section] = (min(lo, r0), max(hi, r0))
+        if segment:
+            sk = (section, segment)
+            lo, hi = seg_range.get(sk, (r0, r0))
+            seg_range[sk] = (min(lo, r0), max(hi, r0))
 
-    # Pass 2: write rows. Every derived metric is already a number in `values`.
-    for i, (kind, section, label, payload, nf) in enumerate(SPEC):
+    # Pass 2: metric (C) + value (D). Column B is filled per-row only where there's no
+    # segment label (segment cells are written by the merge loop below).
+    for i, (kind, section, segment, label, key, nf) in enumerate(SPEC):
         r0 = DATA + i
         if kind == "blank":
             continue
         bg = SECTION_FILL.get(section)
-        ws.write(r0, 1, label, fmt(bg=bg))                       # metric label
+        if segment is None:
+            ws.write_blank(r0, 1, None, fmt(bg=bg))
+        ws.write(r0, 2, label, fmt(bg=bg))
         if kind == "val":
-            ws.write(r0, 2, _num(values.get(payload)), fmt(numfmt=nf, bg="#FFF8E1"))
-        else:  # blankval — label only, value intentionally empty (cross-week, filled in master)
-            ws.write_blank(r0, 2, None, fmt(numfmt=nf, bg="#FFF8E1"))
-
-    # vertical merged section labels in column A
-    for section, (lo, hi) in sec_range.items():
-        cell_fmt = fmt(bg=SECTION_FILL.get(section), bold=True, rotation=90,
-                       align="center", valign="vcenter")
-        if hi > lo:
-            ws.merge_range(lo, 0, hi, 0, section, cell_fmt)
+            ws.write(r0, 3, _num(values.get(key)), fmt(numfmt=nf, bg="#FFF8E1"))
         else:
-            ws.write(lo, 0, section, cell_fmt)
+            ws.write_blank(r0, 3, None, fmt(numfmt=nf, bg="#FFF8E1"))
 
-    # ---- Payment Method sheet ----
+    def label_fmt(section):
+        return fmt(bg=SECTION_FILL.get(section), bold=True, rotation=90, align="center", valign="vcenter")
+
+    for section, (lo, hi) in sec_range.items():
+        if hi > lo:
+            ws.merge_range(lo, 0, hi, 0, section, label_fmt(section))
+        else:
+            ws.write(lo, 0, section, label_fmt(section))
+    for (section, segment), (lo, hi) in seg_range.items():
+        if hi > lo:
+            ws.merge_range(lo, 1, hi, 1, segment, label_fmt(section))
+        else:
+            ws.write(lo, 1, segment, label_fmt(section))
+
+    # Payment Method sheet
     pm_ws = wb.add_worksheet("Payment Method")
     pm_ws.set_column(0, 0, 24)
     pm_ws.set_column(1, 1, 16)
@@ -365,7 +404,6 @@ def build_workbook(path, start_date, values, payment):
 # Main
 # ---------------------------------------------------------------------------
 def last_complete_monday():
-    """Monday (NY local) of the most recent fully complete week."""
     now = datetime.now(NY_TZ) if NY_TZ else datetime.utcnow() - timedelta(hours=4)
     this_monday = now.date() - timedelta(days=now.weekday())
     return this_monday - timedelta(days=7)
@@ -388,13 +426,12 @@ def main():
     output_date = datetime.strptime(start_date, "%Y-%m-%d").strftime("%d_%b_%Y")
     print(f"NY weekly for week starting {start_date}")
 
-    # Batch-run all queries (same helper as VN), then collect results.
     queries = [Query(qid, params={"week_start_date": start_date}) for qid in QIDS.values()]
     redash.run_queries(queries)
     res = {name: redash.get_result(qid) for name, qid in QIDS.items()}
 
     values = extract_values(res)
-    values.update(compute_derived(values))   # derived metrics as real numbers
+    values.update(compute_derived(values))
     payment = extract_payment(res)
 
     output_file = f"NY_Weekly_{output_date}.xlsx"
