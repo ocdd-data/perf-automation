@@ -329,8 +329,8 @@ def rows_ny(d):
         (None,  None,             "Median Pick Up ETA (Minutes)",                   d.get("median_eta")),
 
         (None,  "Unit Economics", "Median Searched Fare",                           d.get("median_searched_fare")),
-        (None,  None,             "Median Booked Fare",                             d.get("median_booked_fare")),
-        (None,  None,             "Median Completed Fare (Rider)",                  d.get("median_completed_fare")),
+        (None,  None,             "Median Booked Fare",                             d.get("median_booked_rider_pay")),
+        (None,  None,             "Median Completed Fare (Rider)",                  d.get("median_completed_rider_pay")),
         (None,  None,             "Median Matched Trip Driver Earnings",             d.get("median_matched_driver_earnings")),
         (None,  None,             "Median Completed Driver Earnings",               d.get("median_completed_driver_earnings")),
 
@@ -602,9 +602,6 @@ def fetch_ny(redash, date, start_date, end_date, churn_start):
         # --- Demand ---
         # 7637 = "Book search logic" -> daily-avg unique search/book + book-search ratio
         "unique_rider_searches":            safe_val(df_bsr,    "rider_unique_search_daily_avg"),
-        "monthly_app_opens":                safe_val(df_search, "open_monthly"),      # 7622
-        "monthly_searches":                 safe_val(df_search, "search_monthly"),    # 7622
-        "monthly_unique_riders":            safe_val(df_rides,  "nyc_rider_completed"),  # 7579 unique completed riders
         "unique_bookings_daily":            safe_val(df_bsr,    "rider_unique_book_daily_avg"),  # 7637
         "completed_daily":                  div(safe_val(df_trips, "completed"), days),          # 7578
         "book_search_ratio":                safe_val(df_bsr,    "book_search_ratio_daily"),       # 7637
@@ -612,7 +609,6 @@ def fetch_ny(redash, date, start_date, end_date, churn_start):
 
         # --- Supply ---
         "pinged_drivers_daily":             safe_val(df_pinged, "pinged_drivers_daily"),   # 7636
-        "online_drivers_daily":             safe_val(df_online, "online_driver_daily"),    # 7586
         "avg_online_hours":                 safe_val(df_online, "avg_online_hour"),        # 7586
         "completed_drivers":                safe_val(df_trips,  "completed_drivers"),      # 7578
         "ride_per_driver":                  safe_val(df_drivers_daily, "ride_per_driver"), # 7585
@@ -623,15 +619,13 @@ def fetch_ny(redash, date, start_date, end_date, churn_start):
         "match_rate":                       div(safe_val(df_trips, "matched"), safe_val(df_trips, "demand")),  # 7578
         "first_try_cater_rate":             safe_val(df_fac,         "first_try_cater_rate"),       # 7594
         "median_time_to_match_sec":         safe_val(df_match_expire,"median_time_to_match_sec"),   # 7595
-        "median_time_to_expire_sec":        safe_val(df_match_expire,"median_time_to_expire_sec"),  # 7595
-        "avg_wait_before_rider_cancel":     safe_val(df_wait,        "avg_waiting_time_rider_cxl"), # 7624
         "median_eta":                       safe_val(df_eta,         "median_eta"),                 # 7583
 
         # --- Unit Economics (7646; single 4W row) -- PROVISIONAL: NY fare maths
         #     are more complex and not yet confirmed, so these may change. ---
         "median_searched_fare":             safe_val(df_fares, "median_searched_fare"),
-        "median_booked_fare":               safe_val(df_fares, "median_booked_fare"),
-        "median_completed_fare":            safe_val(df_fares, "median_completed_fare"),
+        "median_booked_rider_pay":               safe_val(df_fares, "median_booked_rider_pay"),
+        "median_completed_rider_pay":            safe_val(df_fares, "median_completed_rider_pay"),
         "median_matched_driver_earnings":   safe_val(df_fares, "median_matched_driver_earnings"),
         "median_completed_driver_earnings": safe_val(df_fares, "median_completed_driver_earnings"),
 
@@ -645,18 +639,13 @@ def fetch_ny(redash, date, start_date, end_date, churn_start):
         "system_fee":                       safe_val(df_fee, "avg_system_fee_per_trip"),      # 7655
 
         # --- Retention ---
-        "rider_sign_ups":                   safe_val(df_rider_signup, "rider_signup"),    # 7590
         "rider_completed":                  safe_val(df_book,         "completed_monthly"),# 7592
         # all_time = all-time unique completed riders (0 while NY is pre-completion)
         "rider_activated":                  safe_val(df_rider_atsm,   "all_time"),         # 7591
         "riders_churned":                   safe_val(df_rider_car,    "churned"),          # 7593 (count)
-        "resurrected_riders":               safe_val(df_res_rider,    "resurrect_all"),    # 7632
-
-        "driver_sign_ups":                  safe_val(df_driver_signup,"driver_sign_up"),   # 7584
         "driver_completed":                 safe_val(df_trips,        "completed_drivers"),# 7578
         "driver_activated":                 safe_val(df_driver_atsm,  "all_time"),         # 7625
         "drivers_churned":                  safe_val(df_driver_car,   "churned"),          # 7588 (count)
-        "resurrected_drivers":              safe_val(df_res_driver,   "resurrect_all"),    # 7634
     }
 
 
