@@ -307,58 +307,46 @@ def rows_kh(gen, d2w, d3w, d4w, has_2w=True):
 
 def rows_ny(d):
     """
-    NY — single car type only (no 2W/3W split, mirrors the SG/HK single-block
-    layout). Core sections/labels are identical to rows_sg_hk so the sheet stays
-    consistent with SG/HK; NY-specific metrics that those regions don't track
-    (sign ups, resurrected riders/drivers, time-to-expire, wait-before-cancel)
-    are appended within their relevant sections.
-    The "4W" type label is used for the single block, same as SG/HK.
+    NY — exact same single 4W layout as SG/HK.
+    No NY-specific extra rows here, so row count stays consistent.
     """
     return [
         ("4W", "Demand",          "Unique Rider Searches (Daily Average)",          d.get("unique_rider_searches")),
-        (None,  None,             "Monthly App Opens",                              d.get("monthly_app_opens")),
-        (None,  None,             "Monthly Searches",                               d.get("monthly_searches")),
-        (None,  None,             "Monthly Unique Riders",                          d.get("monthly_unique_riders")),
         (None,  None,             "Unique Bookings Created (Daily Average)",        d.get("unique_bookings_daily")),
         (None,  None,             "Completed Trips (Daily Average)",                d.get("completed_daily")),
         (None,  None,             "Book-Search Ratio",                              d.get("book_search_ratio")),
         (None,  None,             "Completion Rate",                                d.get("completion_rate")),
+
         (None,  "Supply",         "Daily Avg Drivers with >= 1 Ping",              d.get("pinged_drivers_daily")),
-        (None,  None,             "Daily Avg Online Drivers",                       d.get("online_drivers_daily")),
         (None,  None,             "Average Driver Online Hours",                    d.get("avg_online_hours")),
         (None,  None,             "Monthly Unique Completed Drivers",               d.get("completed_drivers")),
         (None,  None,             "Avg Completed Trip Per Driver",                  d.get("ride_per_driver")),
         (None,  None,             "Driver Utilisation (utilised / online)",         d.get("driver_utilisation")),
+
         (None,  "Efficiency",     "Match Rate",                                     d.get("match_rate")),
         (None,  None,             "First Try Cater Rate",                           d.get("first_try_cater_rate")),
         (None,  None,             "Median Time to Match (Seconds)",                 d.get("median_time_to_match_sec")),
-        (None,  None,             "Median Time to Expire (Seconds)",                d.get("median_time_to_expire_sec")),
-        (None,  None,             "Avg Wait Before Rider Cancel (Seconds)",         d.get("avg_wait_before_rider_cancel")),
         (None,  None,             "Median Pick Up ETA (Minutes)",                   d.get("median_eta")),
-        # Unit Economics / Spend kept for parity with SG/HK; no NY fare/spend
-        # queries are wired yet, so these stay None until those queries exist.
+
         (None,  "Unit Economics", "Median Searched Fare",                           d.get("median_searched_fare")),
         (None,  None,             "Median Booked Fare",                             d.get("median_booked_fare")),
         (None,  None,             "Median Completed Fare (Rider)",                  d.get("median_completed_fare")),
         (None,  None,             "Median Matched Trip Driver Earnings",             d.get("median_matched_driver_earnings")),
         (None,  None,             "Median Completed Driver Earnings",               d.get("median_completed_driver_earnings")),
+
         (None,  "Spend",          "Driver Incentive Cost / Trip",                   d.get("driver_incentive")),
         (None,  None,             "Rider Promo Cost / Trip",                        d.get("rider_promo_cost")),
         (None,  None,             "Rider Promo Rate",                               d.get("rider_promo_rate")),
         (None,  None,             "Non-trip Marketing Cost",                        d.get("non_trip_marketing")),
         (None,  None,             "Total Spend (Driver+Rider) / Trip",              d.get("total_spend")),
         (None,  None,             "Rider+Driver System Fee (Monthly Average)",      d.get("system_fee")),
-        (None,  "Retention",      "Rider Sign Ups",                                 d.get("rider_sign_ups")),
-        (None,  None,             "Rider Completed",                                d.get("rider_completed")),
-        (None,  None,             "Rider Activated (All-Time Completed)",           d.get("rider_activated")),
-        # NY Car table exposes a churned COUNT (not a rate) -> labelled as count.
-        (None,  None,             "Riders Churned (Monthly)",                       d.get("riders_churned")),
-        (None,  None,             "Monthly Resurrected Riders",                     d.get("resurrected_riders")),
-        (None,  None,             "Driver Sign Ups",                                d.get("driver_sign_ups")),
+
+        (None,  "Retention",      "Rider Completed",                                d.get("rider_completed")),
+        (None,  None,             "Rider Activated",                                d.get("rider_activated")),
+        (None,  None,             "Rider Churn Rate",                               d.get("rider_churn_rate")),
         (None,  None,             "Driver Completed",                               d.get("driver_completed")),
-        (None,  None,             "Driver Activated (All-Time Completed)",          d.get("driver_activated")),
-        (None,  None,             "Drivers Churned (Monthly)",                      d.get("drivers_churned")),
-        (None,  None,             "Monthly Resurrected Drivers",                    d.get("resurrected_drivers")),
+        (None,  None,             "Driver Activated",                               d.get("driver_activated")),
+        (None,  None,             "Driver Churn Rate",                              d.get("driver_churn_rate")),
     ]
 
 
