@@ -4,7 +4,7 @@ name: TH Monthly Run
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: '30 00 1 * *' # TH
+    - cron: '17 0 1 * *'   # TH — 1st of month 00:17 UTC (08:17 SGT); off-peak minute (top-of-hour crons fired 3-6h late)
   workflow_dispatch:
 
 jobs:

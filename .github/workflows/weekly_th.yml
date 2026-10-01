@@ -4,7 +4,7 @@ name: TH Weekly Run
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: '00 23 * * 0' # TH
+    - cron: '13 23 * * 0'  # TH — Sunday 23:13 UTC (Mon 07:13 SGT); off-peak minute (top-of-hour crons fired 3-6h late)
   workflow_dispatch:
 
 jobs:

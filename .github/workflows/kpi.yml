@@ -2,7 +2,7 @@ name: KPI Monthly Run
 
 on:
   schedule:
-    - cron: '0 1 2 * *'  # 2nd day of every month at 01:00 UTC (9am SGT)
+    - cron: '37 0 2 * *'  # 2nd day of every month at 00:37 UTC (08:37 SGT); off-peak minute (top-of-hour crons fired 3-6h late)
   workflow_dispatch:
 
 jobs:

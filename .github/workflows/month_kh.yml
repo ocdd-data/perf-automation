@@ -4,7 +4,7 @@ name: KH Monthly Run
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: '30 00 1 * *' # KH
+    - cron: '23 0 1 * *'   # KH — 1st of month 00:23 UTC (08:23 SGT); off-peak minute (top-of-hour crons fired 3-6h late)
   workflow_dispatch:
 
 jobs:

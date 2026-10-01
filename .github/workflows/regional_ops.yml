@@ -2,7 +2,7 @@ name: Regional Ops Data Monthly Run
 
 on:
   schedule:
-    - cron: '0 1 2 * *'  # 2nd day of every month at 01:00 UTC (9am SGT)
+    - cron: '43 0 2 * *'  # 2nd day of every month at 00:43 UTC (08:43 SGT); off-peak minute (top-of-hour crons fired 3-6h late)
   workflow_dispatch:
 
 jobs:

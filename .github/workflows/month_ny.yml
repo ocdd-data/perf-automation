@@ -4,7 +4,7 @@ on:
   schedule:
     # 1st of each month 13:00 UTC = 09:00 EDT (NY). NY month closes 1st ~04:00–05:00 UTC,
     # so this runs ~8h after close. Note: fixed UTC — in EST (winter) 13:00 UTC is 08:00 NY.
-    - cron: '0 13 1 * *'
+    - cron: '7 13 1 * *'   # 13:07 UTC — off-peak minute (top-of-hour crons fired 3-6h late)
   workflow_dispatch:        # allows manual triggering from the Actions tab
 
 jobs:
