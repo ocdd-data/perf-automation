@@ -2,7 +2,7 @@ name: SG Monthly Run
 
 on:
   schedule:
-    - cron: '0 1 1 * *'  # 1st day of every month at 01:00 UTC (9am SGT)
+    - cron: '41 0 1 * *'  # 1st day of every month at 00:41 UTC (08:41 SGT); off-peak minute (top-of-hour crons fired 3-6h late)
   workflow_dispatch:       # (optional) allows manual triggering from GitHub UI
 
 jobs:

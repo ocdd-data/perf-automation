@@ -4,7 +4,7 @@ name: VN Weekly Run
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: '00 23 * * 0' # VN
+    - cron: '19 23 * * 0'  # VN — Sunday 23:19 UTC (Mon 07:19 SGT); off-peak minute (top-of-hour crons fired 3-6h late)
   workflow_dispatch:
 
 jobs:

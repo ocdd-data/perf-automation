@@ -4,7 +4,7 @@ name: VN Monthly Run
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: '30 00 1 * *' # VN
+    - cron: '29 0 1 * *'   # VN — 1st of month 00:29 UTC (08:29 SGT); off-peak minute (top-of-hour crons fired 3-6h late)
   workflow_dispatch:
 
 jobs:
