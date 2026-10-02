@@ -4,7 +4,7 @@ name: S Monthly Run
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: '19 0 2 * *'   # 2nd of every month, 00:19 UTC (08:19 SGT); off-peak minute (top-of-hour crons fired 3-6h late)
+    - cron: '17 13 1 * *'  # 1st of every month, 13:17 UTC (21:17 SGT) - aligned with the NY monthly run; after the US Redshift load (~08:00 UTC)
   workflow_dispatch:
 
 jobs:
