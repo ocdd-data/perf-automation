@@ -1,0 +1,40 @@
+name: Investor Data Monthly Run
+
+on:
+  schedule:
+    - cron: '47 0 2 * *'  # 2nd day of every month at 00:47 UTC (08:47 SGT); off-peak minute, after regional_ops (00:43)
+  workflow_dispatch:
+    inputs:
+      month:
+        description: 'Month to run (YYYY-MM). Leave blank for the previous month.'
+        required: false
+        default: ''
+
+jobs:
+  run-investor-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set up environment variables
+        run: |
+          echo "REDASH_API_KEY=${{ secrets.REDASH_API_KEY }}" >> .env
+          echo "REDASH_BASE_URL=${{ secrets.REDASH_BASE_URL }}" >> .env
+          echo "SLACK_TOKEN=${{ secrets.SLACK_TOKEN }}" >> .env
+          echo "SLACK_CHANNEL=${{ secrets.SLACK_CHANNEL }}" >> .env
+
+      - name: Run Investor Data Script
+        run: |
+          python "kpi tracking/investor_data.py" ${{ github.event.inputs.month }}
