@@ -8,6 +8,9 @@ from utils.helpers import Query, Redash
 from utils.slack import SlackBot
 
 
+DELIVERY_CITIES = ("ALL", "HCM")
+
+
 def process_city_data(redash, start_date, end_date, DAYS_IN_MONTH, output_date, city):
     """Process data for a specific city"""
     
@@ -40,6 +43,11 @@ def process_city_data(redash, start_date, end_date, DAYS_IN_MONTH, output_date, 
     # Query 4579 doesn't have city param - only run for ALL city
     if city == "ALL":
         common_queries.append(Query(4579, params={"date_range": {"start": start_date, "end": end_date}}))
+
+    # Delivery only runs in HCM, so its block is added to the ALL and HCM sheets
+    has_delivery = city in DELIVERY_CITIES
+    if has_delivery:
+        common_queries.append(Query(8751, params={"date_range": {"start": start_date, "end": end_date}, "city": city}))
     
     redash.run_queries(common_queries)
 
@@ -67,6 +75,7 @@ def process_city_data(redash, start_date, end_date, DAYS_IN_MONTH, output_date, 
     df16 = redash.get_result(4750) # monthly ps - first try
     df17 = redash.get_result(6077) # median ttm / expire (was 4814)
     df18 = redash.get_result(6078) # book search book logic (was 4819)
+    df19 = redash.get_result(8751) if has_delivery else pd.DataFrame() # Delivery Monthly (sender = creator_uuid)
 
     # Helper function to safely get column values
     def safe_get(df, column_name, default=0):
@@ -320,6 +329,36 @@ def process_city_data(redash, start_date, end_date, DAYS_IN_MONTH, output_date, 
             'rider_signup_daily',
             'rider_same_month_activation',
         ], errors='ignore')
+
+    if has_delivery:
+        # Delivery (ride_type 100, live 22 Sep 2026): users are senders (creator_uuid), fee includes
+        # creator_system_fee. 4562's rides exclude delivery, so the share uses rides + delivery as the total,
+        # as in the weekly report. USD and per-ride ratios are left blank for the reporting sheet to fill.
+        delivery_trips = safe_get(df19, 'delivery_completed_trip')
+        total_trips = df['rides'].iloc[0] + delivery_trips
+        promo_trips = safe_get(df19, 'delivery_discount_trips')
+
+        df['completed_trips_delivery'] = [delivery_trips]
+        df['delivery_complete / total_complete'] = [delivery_trips / total_trips if total_trips != 0 else 0]
+        df['daily_trips_delivery'] = [delivery_trips / DAYS_IN_MONTH]
+        df['completed_users_delivery'] = [safe_get(df19, 'delivery_completed_users')]
+        df['first_trip_users_delivery'] = [safe_get(df19, 'first_timers_delivery')]
+        df['resurrect_users_delivery'] = [safe_get(df19, 'resurrect_delivery')]
+        df['churned_users_delivery'] = [safe_get(df19, 'churn_delivery')]
+        df['average_fare_vnd_delivery'] = [safe_get(df19, 'delivery_average_fare')]
+        df['average_fare_usd_delivery'] = [None]
+        df['promo_spend_vnd_delivery'] = [safe_get(df19, 'delivery_discount')]
+        df['promo_spend_usd_delivery'] = [None]
+        df['promotion_trips_delivery'] = [promo_trips]
+        df['average_promotion_value_delivery'] = [None]
+        df['promo_per_completed_ride_delivery'] = [None]
+        df['promo / average_fare delivery'] = [None]
+        df['promo / completed_trips delivery'] = [promo_trips / delivery_trips if delivery_trips != 0 else 0]
+        df['platform_fee_vnd_delivery'] = [safe_get(df19, 'delivery_platform_fee')]
+        df['platform_fee_usd_delivery'] = [None]
+        df['platform_fee_per_completed_ride_delivery'] = [None]
+
+        df = df.copy()
 
     df = df.T
     df.columns = [f"{output_date}"]
