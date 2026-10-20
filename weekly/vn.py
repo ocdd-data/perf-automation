@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 from utils.dates import previous_week_start
 from utils.helpers import Query, Redash
+from utils.report_tag import tag_worksheet
 from utils.slack import SlackBot
 
 
@@ -269,6 +270,7 @@ def main():
     with pd.ExcelWriter(output_file, engine="xlsxwriter") as writer:
         combined_weekly.to_excel(writer, sheet_name="Weekly Report", index=False)
         combined_pm.to_excel(writer, sheet_name="Payment Method", index=False)
+        tag_worksheet(writer.sheets["Weekly Report"], 5, "VN Weekly", start_date)  # F1:G2
 
     # Upload to Slack with error handling
     try:
