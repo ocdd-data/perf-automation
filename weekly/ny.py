@@ -29,6 +29,7 @@ except Exception:                      # pragma: no cover
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.helpers import Query, Redash  # noqa: E402
+from utils.report_tag import tag_worksheet  # noqa: E402
 from utils.slack import SlackBot          # noqa: E402
 
 # Logical name -> Redash query id
@@ -398,6 +399,7 @@ def build_workbook(path, start_date, values, payment):
         pm_ws.write(i + 1, 0, label, fmt())
         pm_ws.write(i + 1, 1, _num(val), fmt(numfmt=nf))
 
+    tag_worksheet(ws, 5, "NY Weekly", start_date)  # F1:G2 of Weekly Report
     wb.close()
 
 
