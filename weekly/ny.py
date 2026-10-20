@@ -15,6 +15,7 @@ Env: REDASH_API_KEY, REDASH_BASE_URL, SLACK_TOKEN, SLACK_CHANNEL_NY (or SLACK_CH
 """
 import os
 import sys
+import time
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -409,6 +410,40 @@ def last_complete_monday():
     return this_monday - timedelta(days=7)
 
 
+QUERY_ATTEMPTS = 3        # first run + 2 retries per query
+RETRY_WAIT_SECONDS = 30
+
+
+def fetch_results(redash, start_date):
+    """Run every query, retrying the ones that fail or come back empty.
+
+    A query that is still missing after QUERY_ATTEMPTS stops the run, so a sheet with
+    silently blank rows is never written or posted to Slack.
+    """
+    res, pending = {}, dict(QIDS)
+    for attempt in range(1, QUERY_ATTEMPTS + 1):
+        queries = [Query(qid, params={"week_start_date": start_date}) for qid in pending.values()]
+        redash.run_queries(queries)
+        for name, qid in list(pending.items()):
+            try:
+                df = redash.get_result(qid) if redash.status[qid] == 2 else None
+            except Exception as e:     # network / CSV parse error counts as a failed attempt
+                print(f"Query {qid} ({name}): could not read result: {e}")
+                df = None
+            if df is not None and len(df) > 0:
+                res[name] = df
+                del pending[name]
+        if not pending:
+            return res
+        failed = ", ".join(f"{n} (q{q})" for n, q in pending.items())
+        print(f"Attempt {attempt}/{QUERY_ATTEMPTS}: no result for {failed}")
+        if attempt < QUERY_ATTEMPTS:
+            time.sleep(RETRY_WAIT_SECONDS)
+
+    sys.exit(f"Stopping: {failed} still failing after {QUERY_ATTEMPTS} attempts. "
+             f"No sheet written or posted. Re-run with: python weekly/ny.py {start_date}")
+
+
 def main():
     load_dotenv()
     redash = Redash(key=os.getenv("REDASH_API_KEY"), base_url=os.getenv("REDASH_BASE_URL"))
@@ -426,9 +461,7 @@ def main():
     output_date = datetime.strptime(start_date, "%Y-%m-%d").strftime("%d_%b_%Y")
     print(f"NY weekly for week starting {start_date}")
 
-    queries = [Query(qid, params={"week_start_date": start_date}) for qid in QIDS.values()]
-    redash.run_queries(queries)
-    res = {name: redash.get_result(qid) for name, qid in QIDS.items()}
+    res = fetch_results(redash, start_date)
 
     values = extract_values(res)
     values.update(compute_derived(values))
