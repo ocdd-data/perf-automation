@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 from utils.dates import previous_month
 from utils.helpers import Query, Redash
+from utils.report_tag import MONTH_KEY, tag_worksheet
 from utils.slack import SlackBot
 
 
@@ -403,7 +404,10 @@ def main():
                 empty_df = pd.DataFrame({"Error": [f"Failed to process {city}: {str(e)}"]})
                 empty_df.to_excel(writer, sheet_name=f"Error_{city}"[:31])
                 continue
-    
+
+        if "VN_ALL" in writer.sheets:
+            tag_worksheet(writer.sheets["VN_ALL"], 3, "VN Monthly", start_date, key=MONTH_KEY)  # D1:E2
+
     print(f"Created Excel file: {output_file}")
     
     # Upload to Slack

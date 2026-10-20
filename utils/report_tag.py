@@ -9,14 +9,16 @@ import csv
 
 REPORT_KEY = "report"
 WEEK_KEY = "week_start"
+MONTH_KEY = "month_start"
 
 
-def tag_worksheet(ws, col, report, week_start):
-  """Tag an xlsxwriter worksheet at rows 1-2, starting at 0-based column `col`."""
+def tag_worksheet(ws, col, report, start, key=WEEK_KEY):
+  """Tag an xlsxwriter worksheet at rows 1-2, starting at 0-based column `col`. `key` labels the date:
+  week_start for weekly reports, month_start for monthly ones."""
   ws.write_string(0, col, REPORT_KEY)
   ws.write_string(0, col + 1, report)
-  ws.write_string(1, col, WEEK_KEY)
-  ws.write_string(1, col + 1, week_start)
+  ws.write_string(1, col, key)
+  ws.write_string(1, col + 1, start)
 
 
 def tag_csv(path, report, week_start):
