@@ -21,12 +21,13 @@ def tag_worksheet(ws, col, report, start, key=WEEK_KEY):
   ws.write_string(1, col + 1, start)
 
 
-def tag_csv(path, report, week_start):
-  """Tag a CSV written by DataFrame.to_csv: rows 1-2 get the tags, one empty column after the data."""
+def tag_csv(path, report, start, key=WEEK_KEY):
+  """Tag a CSV written by DataFrame.to_csv: rows 1-2 get the tags, one empty column after the data. `key`
+  labels the date, as in tag_worksheet."""
   with open(path, newline="", encoding="utf-8") as f:
     rows = list(csv.reader(f))
   width = max(len(r) for r in rows)
-  for row, (key, value) in zip(rows, ((REPORT_KEY, report), (WEEK_KEY, week_start))):
-    row.extend([""] * (width - len(row)) + ["", key, value])
+  for row, (label, value) in zip(rows, ((REPORT_KEY, report), (key, start))):
+    row.extend([""] * (width - len(row)) + ["", label, value])
   with open(path, "w", newline="", encoding="utf-8") as f:
     csv.writer(f).writerows(rows)
