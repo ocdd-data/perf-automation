@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 # Make `utils` importable whether run as a module (python -m monthly.ny) or directly.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.helpers import Query, Redash  # noqa: E402
+from utils.report_tag import MONTH_KEY, tag_csv  # noqa: E402
 from utils.slack import SlackBot          # noqa: E402
 
 
@@ -215,6 +216,7 @@ def main():
 
     output_file = f"NY_{output_date}.csv"
     df.to_csv(output_file)
+    tag_csv(output_file, "NY Monthly", query_date, key=MONTH_KEY)  # D1:E2
 
     slack = SlackBot()
     slack.uploadFile(output_file,
