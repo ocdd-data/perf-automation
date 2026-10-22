@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 from utils.dates import previous_month
 from utils.helpers import Query, Redash
+from utils.report_tag import MONTH_KEY, tag_csv
 from utils.slack import SlackBot
 
 
@@ -245,6 +246,7 @@ def main():
   output_file = f"HK_{output_date}.csv"
 
   df.to_csv(output_file)
+  tag_csv(output_file, "HK Monthly", start_date, key=MONTH_KEY)  # D1:E2
 
   slack = SlackBot()
   slack.uploadFile(output_file, 
