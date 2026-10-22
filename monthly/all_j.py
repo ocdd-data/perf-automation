@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from utils.constants import REGIONS, TIMEZONES
 from utils.helpers import Query, Redash
+from utils.report_tag import MONTH_KEY, tag_worksheet
 from utils.slack import SlackBot
 
 
@@ -318,6 +319,7 @@ def main():
     th.to_excel(writer, sheet_name="TH", index=False)
     hk.to_excel(writer, sheet_name="HK", index=False)
     ny.to_excel(writer, sheet_name="NY", index=False)
+    tag_worksheet(writer.sheets["SG"], 2, "J Monthly", start_date, key=MONTH_KEY)  # C1:D2 of SG
 
   slack = SlackBot()
   slack.uploadFile(
