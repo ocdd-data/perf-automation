@@ -21,12 +21,15 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+import csv
+
 import pandas as pd
 from dotenv import load_dotenv
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
 from utils.helpers import Query, Redash
+from utils.report_tag import MONTH_KEY, tag_csv
 from utils.slack import SlackBot
 
 
@@ -162,6 +165,23 @@ def write_sheet(ws, label, blocks):
         row += 1   # blank line between vehicle blocks
 
     ws.freeze_panes = "B2"
+
+
+def write_sheet_import(path, results, start_date):
+    """One CSV of every value, for the Regional Operational Data sheet's Apps Script (appscript/regional_ops.gs).
+
+    Columns A:D are region / vehicle / metric / value; vehicle is BIKE, CAR or TUKTUK, or blank for a
+    single-vehicle region. A region that failed is left out. Tagged F1:G2: report = Regional Ops, month_start.
+    """
+    rows = [["region", "vehicle", "metric", "value"]]
+    for region, blocks in results:
+        for vehicle, metrics in blocks:
+            for metric, value in metrics:
+                rows.append([region, vehicle.split()[0] if vehicle else "", metric, "" if value is None else value])
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        csv.writer(f).writerows(rows)
+    tag_csv(path, "Regional Ops", start_date, key=MONTH_KEY)
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -348,6 +368,7 @@ def main():
 
     wb = Workbook()
     wb.remove(wb.active)
+    results = []
 
     for name, fn in tasks:
         print(f"-> {name}")
@@ -355,6 +376,7 @@ def main():
             blocks = fn()
             ws = wb.create_sheet(name)
             write_sheet(ws, label, blocks)
+            results.append((name, blocks))
             print("   done")
         except Exception as e:
             import traceback
@@ -375,10 +397,19 @@ def main():
     )
     print("Uploaded to Slack")
 
-    try:
-        os.remove(output_file)
-    except OSError:
-        pass
+    import_file = write_sheet_import(f"Regional_Operational_Data_{label}.csv", results, start_date)
+    slack.uploadFile(
+        import_file,
+        os.getenv("SLACK_CHANNEL"),
+        f"Regional Operational Data for {label.replace('_', ' ')}: sheet import (File > Import > Insert new sheet(s))",
+    )
+    print("Uploaded sheet import to Slack")
+
+    for f in (output_file, import_file):
+        try:
+            os.remove(f)
+        except OSError:
+            pass
 
 
 if __name__ == "__main__":
